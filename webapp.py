@@ -35,44 +35,6 @@ def homepage(request: Request):
     bars += "<div class='separator'></div>"
     bars += f"<div class='barline'>{data['timestamp'][:10]} | {bar.ljust(40)} ${data['hashprice_rt']:.2f} ▲ {data['pct_vs_7d']:+.2f}% vs 7D</div>"
 
-    explanation = f"""
-    <div class="calc-box">
-
-    <strong>How This Dashboard Calculates Hashprice</strong><br><br>
-
-    There are two economic lenses here: <br><br>
-
-    <strong>1) Realtime Hashprice</strong><br>
-    This asks: “If I mined right now, what would 1 PH earn today?”<br><br>
-
-    We calculate it using:<br>
-    (Block Reward + Live Fee Estimate) × 144 blocks × Live BTC Price<br>
-    ÷ 1-Day Network Hashrate Estimate<br><br>
-
-    Why 1-Day hashrate?<br>
-    Because true hashrate can’t be observed instantly — it’s inferred from recent block times.
-    A 1-day estimate reacts quickly but avoids noise from short bursts in block timing.<br><br>
-
-    <strong>2) 7-Day Smoothed Hashprice</strong><br>
-    This provides structural context. It smooths revenue and hashrate over a rolling window
-    so you can see trend rather than volatility.<br><br>
-
-    <strong>How This Differs From Luxor</strong><br>
-    Luxor’s public hashprice index uses internal smoothing, proprietary data feeds,
-    and sometimes shorter rolling hashrate windows. That can make their spot value
-    slightly more reactive or slightly more damped depending on market conditions.<br><br>
-
-    This dashboard intentionally separates:
-    • A fast-reacting economic pulse (Realtime)
-    • A conservative structural baseline (7-Day)<br><br>
-
-    The goal is transparency. All components are visible and based on publicly available data:
-    BTC spot, block reward, mempool fee estimates, and 1-day hashrate inference.<br><br>
-
-    This is meant to be an independent economic truth, not a proprietary index.
-    </div>
-    """
-
     return HTMLResponse(f"""
     <html>
     <head>
@@ -87,7 +49,7 @@ def homepage(request: Request):
     }}
 
     .container {{
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
     }}
 
@@ -95,6 +57,17 @@ def homepage(request: Request):
         border: 1px solid {color};
         padding: 20px 30px;
         margin-bottom: 20px;
+    }}
+
+    .header-flex {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }}
+
+    .brand {{
+        font-size: 14px;
+        opacity: 0.8;
     }}
 
     .big {{
@@ -120,12 +93,13 @@ def homepage(request: Request):
         padding: 6px 12px;
     }}
 
-    .calc-box {{
-        margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid {color};
-        font-size: 14px;
-        line-height: 1.7;
+    input {{
+        background: #000;
+        color: {color};
+        border: 1px solid {color};
+        padding: 6px;
+        margin-right: 10px;
+        width: 120px;
     }}
 
     button {{
@@ -135,16 +109,37 @@ def homepage(request: Request):
         padding: 6px 12px;
         cursor: pointer;
     }}
+
+    .result {{
+        margin-top: 15px;
+        line-height: 1.8;
+    }}
+
     </style>
 
     <script>
-    function toggleCalc() {{
-        var x = document.getElementById("calc");
-        if (x.style.display === "none") {{
-            x.style.display = "block";
-        }} else {{
-            x.style.display = "none";
-        }}
+    function calculateProfit() {{
+
+        const ph = parseFloat(document.getElementById("ph").value);
+        const jth = parseFloat(document.getElementById("jth").value);
+        const power = parseFloat(document.getElementById("power").value);
+
+        const hashprice = {data['hashprice_rt']};
+
+        const revenue = ph * hashprice;
+
+        const watts = ph * 1000 * jth;  // PH → TH then × J/TH
+        const kw = watts / 1000;
+        const daily_kwh = kw * 24;
+
+        const power_cost = daily_kwh * power;
+
+        const margin = revenue - power_cost;
+
+        document.getElementById("profit_result").innerHTML =
+            "Daily Revenue: $" + revenue.toFixed(2) + "<br>" +
+            "Daily Power Cost: $" + power_cost.toFixed(2) + "<br>" +
+            "Daily Gross Margin: $" + margin.toFixed(2);
     }}
     </script>
 
@@ -153,14 +148,19 @@ def homepage(request: Request):
 
     <div class="container">
 
-        <div class="box">
-            <div>BITCOIN HASHPRICE DASHBOARD</div>
-            <div>Last Updated: {data['timestamp']}</div>
+        <div class="box header-flex">
+            <div>
+                <div>BITCOIN HASHPRICE DASHBOARD</div>
+                <div>Last Updated: {data['timestamp']}</div>
+            </div>
+            <div class="brand">
+                BeardMiner2000 Industries
+            </div>
         </div>
 
         <div class="box">
+            Theme:
             <div class="theme-buttons">
-                Theme:
                 <a href="/?theme=orange">Orange</a>
                 <a href="/?theme=green">Green</a>
                 <a href="/?theme=blue">Blue</a>
@@ -190,10 +190,15 @@ def homepage(request: Request):
         </div>
 
         <div class="box">
-            <button onclick="toggleCalc()">How It’s Calculated</button>
-            <div id="calc" style="display:none;">
-                {explanation}
-            </div>
+            <strong>Profitability Calculator</strong><br><br>
+            Total PH:
+            <input id="ph" type="number" step="0.1" placeholder="100"><br><br>
+            Machine Efficiency (J/TH):
+            <input id="jth" type="number" step="0.1" placeholder="18"><br><br>
+            Power Price ($/kWh):
+            <input id="power" type="number" step="0.001" placeholder="0.05"><br><br>
+            <button onclick="calculateProfit()">Calculate</button>
+            <div id="profit_result" class="result"></div>
         </div>
 
     </div>
