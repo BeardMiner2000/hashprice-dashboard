@@ -5,204 +5,171 @@ from hashprice_engine import calculate
 app = FastAPI()
 
 THEMES = {
-    "orange": "#F7931A",
-    "green": "#00FF88",
-    "blue": "#4FC3F7",
-    "white": "#FFFFFF"
+    "orange": {"accent": "#ff9900", "bg": "#0b0b0b"},
+    "green": {"accent": "#00ff88", "bg": "#0b0b0b"},
+    "blue": {"accent": "#4da6ff", "bg": "#0b0b0b"},
+    "white": {"accent": "#111111", "bg": "#ffffff"},
 }
 
 @app.get("/", response_class=HTMLResponse)
-def homepage(request: Request):
-
-    theme = request.query_params.get("theme", "orange")
-    if theme not in THEMES:
-        theme = "orange"
-
-    color = THEMES[theme]
-
+def dashboard(request: Request):
+    theme_name = request.query_params.get("theme", "orange")
+    theme = THEMES.get(theme_name, THEMES["orange"])
     data = calculate()
-    trend = data['trend']
-    max_val = trend['hashprice_1d'].max()
 
-    bars = ""
-    for _, row in trend.iterrows():
-        length = int((row['hashprice_1d'] / max_val) * 40)
-        bar = "░" * length
-        bars += f"<div class='barline'>{row['time'].date()} | {bar.ljust(40)} ${row['hashprice_1d']:.2f}</div>"
-
-    length = int((data['hashprice_rt'] / max_val) * 40)
-    bar = "░" * length
-    bars += "<div class='separator'></div>"
-    bars += f"<div class='barline'>{data['timestamp'][:10]} | {bar.ljust(40)} ${data['hashprice_rt']:.2f} ▲ {data['pct_vs_7d']:+.2f}% vs 7D</div>"
-
-    return HTMLResponse(f"""
+    html = f"""
     <html>
     <head>
     <meta http-equiv="refresh" content="60">
     <style>
-    body {{
-        background: #111;
-        color: {color};
-        font-family: monospace;
-        margin: 0;
-        padding: 40px 0;
-    }}
-
-    .container {{
-        max-width: 1000px;
-        margin: 0 auto;
-    }}
-
-    .box {{
-        border: 1px solid {color};
-        padding: 20px 30px;
-        margin-bottom: 20px;
-    }}
-
-    .header-flex {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }}
-
-    .brand {{
-        font-size: 14px;
-        opacity: 0.8;
-    }}
-
-    .big {{
-        font-size: 36px;
-    }}
-
-    .separator {{
-        height: 1px;
-        background-color: {color};
-        margin: 12px 0;
-    }}
-
-    .barline {{
-        white-space: pre;
-        margin-bottom: 4px;
-    }}
-
-    .theme-buttons a {{
-        margin-right: 12px;
-        text-decoration: none;
-        color: {color};
-        border: 1px solid {color};
-        padding: 6px 12px;
-    }}
-
-    input {{
-        background: #000;
-        color: {color};
-        border: 1px solid {color};
-        padding: 6px;
-        margin-right: 10px;
-        width: 120px;
-    }}
-
-    button {{
-        background: none;
-        color: {color};
-        border: 1px solid {color};
-        padding: 6px 12px;
-        cursor: pointer;
-    }}
-
-    .result {{
-        margin-top: 15px;
-        line-height: 1.8;
-    }}
-
+        body {{
+            background: {theme["bg"]};
+            color: {theme["accent"]};
+            font-family: monospace;
+            max-width: 1000px;
+            margin: 40px auto;
+        }}
+        .box {{
+            border: 1px solid {theme["accent"]};
+            padding: 20px;
+            margin-bottom: 20px;
+        }}
+        .brand {{
+            float: right;
+        }}
+        .theme-row {{
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }}
+        .theme-buttons {{
+            display: flex;
+            gap: 12px;
+        }}
+        .theme-btn {{
+            padding: 6px 14px;
+            border: 1px solid {theme["accent"]};
+            text-decoration: none;
+            color: {theme["accent"]};
+        }}
+        .theme-btn:hover {{
+            background: {theme["accent"]};
+            color: black;
+        }}
+        input {{
+            background: transparent;
+            border: 1px solid {theme["accent"]};
+            color: {theme["accent"]};
+            padding: 6px;
+            width: 120px;
+        }}
+        button {{
+            padding: 6px 14px;
+            border: 1px solid {theme["accent"]};
+            background: transparent;
+            color: {theme["accent"]};
+            cursor: pointer;
+        }}
+        button:hover {{
+            background: {theme["accent"]};
+            color: black;
+        }}
+        details summary {{
+            cursor: pointer;
+        }}
     </style>
-
-    <script>
-    function calculateProfit() {{
-
-        const ph = parseFloat(document.getElementById("ph").value);
-        const jth = parseFloat(document.getElementById("jth").value);
-        const power = parseFloat(document.getElementById("power").value);
-
-        const hashprice = {data['hashprice_rt']};
-
-        const revenue = ph * hashprice;
-
-        const watts = ph * 1000 * jth;  // PH → TH then × J/TH
-        const kw = watts / 1000;
-        const daily_kwh = kw * 24;
-
-        const power_cost = daily_kwh * power;
-
-        const margin = revenue - power_cost;
-
-        document.getElementById("profit_result").innerHTML =
-            "Daily Revenue: $" + revenue.toFixed(2) + "<br>" +
-            "Daily Power Cost: $" + power_cost.toFixed(2) + "<br>" +
-            "Daily Gross Margin: $" + margin.toFixed(2);
-    }}
-    </script>
-
     </head>
     <body>
 
-    <div class="container">
-
-        <div class="box header-flex">
-            <div>
-                <div>BITCOIN HASHPRICE DASHBOARD</div>
-                <div>Last Updated: {data['timestamp']}</div>
-            </div>
-            <div class="brand">
-                BeardMiner2000 Industries
-            </div>
-        </div>
-
-        <div class="box">
-            Theme:
-            <div class="theme-buttons">
-                <a href="/?theme=orange">Orange</a>
-                <a href="/?theme=green">Green</a>
-                <a href="/?theme=blue">Blue</a>
-                <a href="/?theme=white">White</a>
-            </div>
-        </div>
-
-        <div class="box">
-            <div>BTC Spot Price</div>
-            <div class="big">${data['spot']:,.2f}</div>
-        </div>
-
-        <div class="box">
-            <div>Realtime Hashprice</div>
-            <div class="big">${data['hashprice_rt']:.2f}</div>
-            <div>▲ {data['pct_vs_7d']:+.2f}% vs 7D</div>
-        </div>
-
-        <div class="box">
-            <div>1-Day Raw: ${data['hashprice_1d']:.2f}</div>
-            <div>7-Day Smoothed: ${data['hashprice_7d']:.2f}</div>
-        </div>
-
-        <div class="box">
-            <div>Recent Trend</div>
-            {bars}
-        </div>
-
-        <div class="box">
-            <strong>Profitability Calculator</strong><br><br>
-            Total PH:
-            <input id="ph" type="number" step="0.1" placeholder="100"><br><br>
-            Machine Efficiency (J/TH):
-            <input id="jth" type="number" step="0.1" placeholder="18"><br><br>
-            Power Price ($/kWh):
-            <input id="power" type="number" step="0.001" placeholder="0.05"><br><br>
-            <button onclick="calculateProfit()">Calculate</button>
-            <div id="profit_result" class="result"></div>
-        </div>
-
+    <div class="box">
+        <strong>BITCOIN HASHPRICE DASHBOARD</strong>
+        <span class="brand">BeardMiner2000 Industries</span><br>
+        Last Updated: {data["timestamp"]}
     </div>
+
+    <div class="box">
+        <div class="theme-row">
+            <strong>Theme:</strong>
+            <div class="theme-buttons">
+                <a href="/?theme=orange" class="theme-btn">Orange</a>
+                <a href="/?theme=green" class="theme-btn">Green</a>
+                <a href="/?theme=blue" class="theme-btn">Blue</a>
+                <a href="/?theme=white" class="theme-btn">White</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="box">
+        <strong>BTC Spot Price</strong><br><br>
+        <span style="font-size:40px">${data["btc_price"]:,.2f}</span>
+    </div>
+
+    <div class="box">
+        <strong>Realtime Hashprice</strong><br><br>
+        <span style="font-size:40px">${data["realtime_hashprice"]:,.2f}</span><br>
+        {"▲" if data["vs_7d"] >= 0 else "▼"} {data["vs_7d"]:.2f}% vs 7D
+    </div>
+
+    <div class="box">
+        <strong>Profitability Calculator</strong><br><br>
+
+        Total PH:<br>
+        <input id="ph" value="100"><br><br>
+
+        Machine Efficiency (J/TH):<br>
+        <input id="eff" value="18"><br><br>
+
+        Power Price ($/kWh):<br>
+        <input id="power" value="0.05"><br><br>
+
+        <button onclick="calc()">Calculate</button>
+
+        <div id="result" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="box">
+        1-Day Raw: ${data["raw_1d"]:.2f}<br>
+        7-Day Smoothed: ${data["smoothed_7d"]:.2f}
+    </div>
+
+    <div class="box">
+        <strong>Recent Trend</strong><br><br>
+        {data["trend_html"]}
+    </div>
+
+    <div class="box">
+        <details>
+            <summary><strong>How is this calculated?</strong></summary>
+            <br>
+            Hashprice ($/PH/day) =
+            (BTC Price × Daily BTC Issued) ÷ Network Hashrate (PH)
+            <br><br>
+            This dashboard intentionally uses short-term
+            hashrate and fee estimates to reflect current
+            market conditions rather than long smoothing windows.
+        </details>
+    </div>
+
+    <script>
+        function calc() {{
+            let ph = parseFloat(document.getElementById("ph").value);
+            let eff = parseFloat(document.getElementById("eff").value);
+            let power = parseFloat(document.getElementById("power").value);
+
+            let revenue = ph * {data["realtime_hashprice"]};
+            let power_kw = ph * 1000 * eff / 1000;
+            let power_cost = power_kw * 24 * power;
+            let profit = revenue - power_cost;
+
+            document.getElementById("result").innerHTML =
+                "Daily Revenue: $" + revenue.toFixed(2) + "<br>" +
+                "Daily Power Cost: $" + power_cost.toFixed(2) + "<br>" +
+                "Daily Profit: $" + profit.toFixed(2);
+        }}
+    </script>
 
     </body>
     </html>
-    """)
+    """
+
+    return HTMLResponse(content=html)
