@@ -48,7 +48,7 @@ def fetch_live_price():
 def calculate():
     df = fetch_data()
     last = df.iloc[-1]
-    trend = df.tail(14)
+    trend = df.tail(14).copy()
 
     live_price = fetch_live_price()
 
@@ -59,12 +59,28 @@ def calculate():
 
     timestamp = datetime.now(PACIFIC).strftime("%Y-%m-%d %H:%M:%S %Z")
 
+    # Compatibility layer for different UI versions
+    trend_html = "<br>".join(
+        f"{row.time.strftime('%m-%d')}: ${row.hashprice_1d:,.2f}"
+        for row in trend.itertuples()
+    )
+
     return {
         "timestamp": timestamp,
+
+        # Newer keys
         "spot": live_price,
         "hashprice_rt": realtime,
         "hashprice_1d": last['hashprice_1d'],
         "hashprice_7d": last['hashprice_7d'],
         "pct_vs_7d": pct_vs_7d,
-        "trend": trend[['time','hashprice_1d']]
+        "trend": trend[['time', 'hashprice_1d']],
+
+        # Legacy webapp keys
+        "btc_price": live_price,
+        "realtime_hashprice": realtime,
+        "raw_1d": last['hashprice_1d'],
+        "smoothed_7d": last['hashprice_7d'],
+        "vs_7d": pct_vs_7d,
+        "trend_html": trend_html,
     }
