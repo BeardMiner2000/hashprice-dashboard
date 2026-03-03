@@ -11,27 +11,31 @@ THEMES = {
     "white": {"accent": "#111111", "bg": "#ffffff"},
 }
 
+def build_trend_ascii(data):
+    trend = data["trend"]
+    max_val = max(float(v) for v in trend["hashprice_1d"]) if len(trend) else 1.0
+    lines = []
+
+    for _, row in trend.iterrows():
+        date_str = row["time"].strftime("%Y-%m-%d")
+        val = float(row["hashprice_1d"])
+        bar_len = max(1, int((val / max_val) * 56))
+        bar = "▓" * bar_len
+        lines.append(f"{date_str} | {bar:<56} ${val:,.2f}")
+
+    marker = "▲" if data["pct_vs_7d"] >= 0 else "▼"
+    lines.append("─" * 96)
+    lines.append(
+        f"{data['timestamp'][:10]} | {'▓' * 50:<56} ${data['hashprice_rt']:,.2f} {marker} {data['pct_vs_7d']:+.2f}% vs 7D"
+    )
+    return "\n".join(lines)
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     theme_name = request.query_params.get("theme", "orange")
     theme = THEMES.get(theme_name, THEMES["orange"])
     data = calculate()
-
-    trend = data["trend"]
-    max_val = trend["hashprice_1d"].max()
-
-    trend_rows = ""
-    for _, row in trend.iterrows():
-        percent = (row["hashprice_1d"] / max_val) * 100
-        trend_rows += f"""
-        <div class="trend-row">
-            <span class="trend-date">{row["time"].date()}</span>
-            <div class="trend-bar-wrapper">
-                <div class="trend-bar" style="width:{percent:.1f}%"></div>
-            </div>
-            <span class="trend-value">${row["hashprice_1d"]:.2f}</span>
-        </div>
-        """
+    trend_ascii = build_trend_ascii(data)
 
     html = f"""
     <html>
@@ -42,47 +46,53 @@ def dashboard(request: Request):
         body {{
             background: {theme["bg"]};
             color: {theme["accent"]};
-            font-family: monospace;
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 20px;
-        }}
-
-        @media (max-width: 768px) {{
-            body {{
-                margin: 20px auto;
-                padding: 14px;
-            }}
+            font-family: Menlo, Monaco, Consolas, monospace;
+            max-width: 1250px;
+            margin: 30px auto;
+            padding: 22px;
+            line-height: 1.45;
         }}
 
         .box {{
             border: 1px solid {theme["accent"]};
-            padding: 18px;
-            margin-bottom: 20px;
+            padding: 26px 30px;
+            margin-bottom: 28px;
         }}
 
-        .brand {{
-            float: right;
-            font-size: 12px;
+        .ascii-brand {{
+            font-size: 14px;
+            white-space: pre;
+            opacity: 0.9;
         }}
 
-        .theme-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
+        .main-title {{
+            font-size: 44px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }}
+
+        .kpi-value {{
+            font-size: 72px;
+            font-weight: 700;
+        }}
+
+        .subtle {{
+            font-size: 28px;
+            opacity: 0.85;
         }}
 
         .theme-buttons {{
             display: flex;
-            gap: 8px;
+            gap: 10px;
+            flex-wrap: wrap;
         }}
 
         .theme-btn {{
-            padding: 4px 8px;
+            padding: 5px 12px;
             border: 1px solid {theme["accent"]};
             text-decoration: none;
             color: {theme["accent"]};
+            font-size: 12px;
         }}
 
         .theme-btn:hover {{
@@ -94,16 +104,18 @@ def dashboard(request: Request):
             background: transparent;
             border: 1px solid {theme["accent"]};
             color: {theme["accent"]};
-            padding: 6px;
-            width: 120px;
+            padding: 7px;
+            width: 140px;
+            font-family: inherit;
         }}
 
         button {{
-            padding: 6px 14px;
+            padding: 8px 16px;
             border: 1px solid {theme["accent"]};
             background: transparent;
             color: {theme["accent"]};
             cursor: pointer;
+            font-family: inherit;
         }}
 
         button:hover {{
@@ -111,84 +123,71 @@ def dashboard(request: Request):
             color: black;
         }}
 
-        .trend-row {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 6px 0;
+        pre {{
+            margin: 0;
+            white-space: pre-wrap;
+            font-size: 16px;
         }}
 
-        .trend-date {{
-            min-width: 100px;
-            font-size: 12px;
-        }}
-
-        .trend-bar-wrapper {{
-            flex-grow: 1;
-            height: 14px;
-            background: rgba(255,255,255,0.05);
-        }}
-
-        .trend-bar {{
-            height: 100%;
-            background: {theme["accent"]};
-        }}
-
-        .trend-value {{
-            min-width: 70px;
-            text-align: right;
-            font-size: 12px;
-        }}
-
-        details summary {{
-            cursor: pointer;
+        @media (max-width: 768px) {{
+            body {{
+                padding: 16px;
+            }}
+            .kpi-value {{
+                font-size: 48px;
+            }}
+            .main-title {{
+                font-size: 32px;
+            }}
         }}
     </style>
     </head>
     <body>
 
     <div class="box">
-        <strong>BITCOIN HASHPRICE DASHBOARD</strong>
-        <span class="brand">BeardMiner2000 Industries</span><br>
+<pre class="ascii-brand">
+██████╗ ███████╗ █████╗ ██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗███████╗██████╗ 
+██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║██╔════╝██╔══██╗
+██████╔╝█████╗  ███████║██████╔╝██████╔╝██╔████╔██║██║██╔██╗ ██║█████╗  ██████╔╝
+██╔══██╗██╔══╝  ██╔══██║██╔══██╗██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══╝  ██╔══██╗
+██████╔╝███████╗██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║██║ ╚████║███████╗██║  ██║
+╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝
+</pre>
+        <div class="main-title">BITCOIN HASHPRICE DASHBOARD</div>
         Last Updated: {data["timestamp"]}
     </div>
 
     <div class="box">
-        <div class="theme-row">
-            <div class="theme-buttons">
-                <a href="/?theme=orange" class="theme-btn">Orange</a>
-                <a href="/?theme=green" class="theme-btn">Green</a>
-                <a href="/?theme=blue" class="theme-btn">Blue</a>
-                <a href="/?theme=white" class="theme-btn">White</a>
-            </div>
+        <div class="theme-buttons">
+            <a href="/?theme=orange" class="theme-btn">Orange</a>
+            <a href="/?theme=green" class="theme-btn">Green</a>
+            <a href="/?theme=blue" class="theme-btn">Blue</a>
+            <a href="/?theme=white" class="theme-btn">White</a>
         </div>
     </div>
 
     <div class="box">
         <strong>BTC Spot Price</strong><br><br>
-        <span style="font-size:40px">${data["spot"]:,.2f}</span>
+        <div class="kpi-value">${data["spot"]:,.2f}</div>
     </div>
 
     <div class="box">
         <strong>Realtime Hashprice</strong><br><br>
-        <span style="font-size:40px">${data["hashprice_rt"]:,.2f}</span><br>
-        {"▲" if data["pct_vs_7d"] >= 0 else "▼"} {data["pct_vs_7d"]:.2f}% vs 7D
+        <div class="kpi-value">${data["hashprice_rt"]:,.2f}</div>
+        <div class="subtle">
+            {"▲" if data["pct_vs_7d"] >= 0 else "▼"} {data["pct_vs_7d"]:+.2f}% vs 7D
+        </div>
     </div>
 
     <div class="box">
         <strong>Profitability Calculator</strong><br><br>
-
         Total PH:<br>
         <input id="ph" value="100"><br><br>
-
         Machine Efficiency (J/TH):<br>
         <input id="eff" value="18"><br><br>
-
         Power Price ($/kWh):<br>
         <input id="power" value="0.05"><br><br>
-
         <button onclick="calc()">Calculate</button>
-
         <div id="result" style="margin-top:15px;"></div>
     </div>
 
@@ -199,17 +198,36 @@ def dashboard(request: Request):
 
     <div class="box">
         <strong>Recent Trend</strong><br><br>
-        {trend_rows}
+        <pre>{trend_ascii}</pre>
     </div>
 
     <div class="box">
         <details>
-            <summary><strong>How is this calculated?</strong></summary>
-            <br>
-            Hashprice ($/PH/day) =
-            (BTC Price × Daily BTC Issued) ÷ Network Hashrate (PH)
+            <summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
             <br><br>
-            Uses raw daily revenue and live BTC pricing.
+
+            There are two economic lenses here:<br><br>
+
+            <strong>1) Realtime Hashprice</strong><br>
+            This asks: "If I mined right now, what would 1 PH earn today?"<br><br>
+
+            Calculated using:<br>
+            (Block Reward + Live Fee Estimate) × 144 blocks × Live BTC Price<br>
+            ÷ 1-Day Network Hashrate Estimate<br><br>
+
+            <strong>Why 1-Day Hashrate?</strong><br>
+            True hashrate cannot be observed instantly — it is inferred from recent block times.
+            A 1-day estimate reacts quickly but avoids noise from short bursts in block timing.<br><br>
+
+            <strong>2) 7-Day Smoothed Hashprice</strong><br>
+            Provides structural context. Revenue and hashrate are smoothed
+            over a rolling window to show trend rather than volatility.<br><br>
+
+            This dashboard separates:
+            • A fast-reacting economic pulse (Realtime)<br>
+            • A conservative structural baseline (7-Day)<br><br>
+
+            Built using public data sources only.
         </details>
     </div>
 
