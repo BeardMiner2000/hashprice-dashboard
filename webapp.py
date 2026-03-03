@@ -11,327 +11,338 @@ THEMES = {
     "white": {"accent": "#111111", "bg": "#ffffff"},
 }
 
-
-def build_trend_ascii(data, bar_width: int, include_values: bool = True, include_today_line: bool = True) -> str:
+def build_trend_ascii(data, width):
     trend = data["trend"]
-    if len(trend) == 0:
-        return "No trend data available."
-
     max_val = max(float(v) for v in trend["hashprice_1d"]) or 1.0
 
     lines = []
     for _, row in trend.iterrows():
-        date_str = row["time"].strftime("%Y-%m-%d")
+        date = row["time"].strftime("%Y-%m-%d")
         val = float(row["hashprice_1d"])
-        bar_len = max(1, int((val / max_val) * bar_width))
-        bar = "▓" * bar_len
+        bar_len = max(1, int((val/max_val)*width))
+        bar = "▓"*bar_len
+        lines.append(f"{date} | {bar:<{width}} ${val:,.2f}")
 
-        if include_values:
-            lines.append(f"{date_str} | {bar:<{bar_width}} ${val:,.2f}")
-        else:
-            lines.append(f"{date_str} | {bar:<{bar_width}}")
-
-    if include_today_line:
-        marker = "▲" if data["pct_vs_7d"] >= 0 else "▼"
-        lines.append("─" * (bar_width + (16 if include_values else 8) + 16))
-        # Keep this one compact so it doesn't explode on small screens
-        lines.append(
-            f"{data['timestamp'][:10]} | {'▓' * min(bar_width, 24):<{bar_width}} "
-            f"${data['hashprice_rt']:,.2f} {marker} {data['pct_vs_7d']:+.2f}% vs 7D"
-        )
+    marker = "▲" if data["pct_vs_7d"] >= 0 else "▼"
+    lines.append("─"*(width+26))
+    lines.append(
+        f"{data['timestamp'][:10]} | {'▓'*min(width,24):<{width}} "
+        f"${data['hashprice_rt']:,.2f} {marker} {data['pct_vs_7d']:+.2f}% vs 7D"
+    )
 
     return "\n".join(lines)
 
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    theme_name = request.query_params.get("theme", "orange")
+
+    theme_name = request.query_params.get("theme","orange")
     theme = THEMES.get(theme_name, THEMES["orange"])
     data = calculate()
 
-    # Desktop vs mobile trend strings. Mobile uses shorter bars so it fits the viewport.
-    trend_ascii_desktop = build_trend_ascii(data, bar_width=56, include_values=True, include_today_line=True)
-    trend_ascii_mobile = build_trend_ascii(data, bar_width=26, include_values=True, include_today_line=True)
+    trend_desktop = build_trend_ascii(data,56)
+    trend_mobile = build_trend_ascii(data,24)
 
     html = f"""
-    <html>
-    <head>
-      <meta http-equiv="refresh" content="60">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {{
-          background: {theme["bg"]};
-          color: {theme["accent"]};
-          font-family: Menlo, Monaco, Consolas, monospace;
-          max-width: 1250px;
-          margin: 30px auto;
-          padding: 22px;
-          line-height: 1.45;
-        }}
+<html>
+<head>
 
-        .box {{
-          border: 1px solid {theme["accent"]};
-          padding: 26px 30px;
-          margin-bottom: 28px;
-        }}
+<meta http-equiv="refresh" content="60">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        /* ---------------- Header / Brand ---------------- */
-        .ascii-clip {{
-          width: 100%;
-          overflow: hidden; /* prevents Safari from zooming out due to overflow */
-        }}
+<style>
 
-        .ascii-brand {{
-          font-size: 14px;
-          white-space: pre;
-          margin: 0;
-          display: inline-block;
-          transform-origin: top left;
-        }}
+html,body {{
+overflow-x:hidden;
+}}
 
-        .main-title {{
-          font-size: 44px;
-          font-weight: 700;
-          letter-spacing: 1px;
-        }}
+body {{
+background:{theme["bg"]};
+color:{theme["accent"]};
+font-family:Menlo,Monaco,Consolas,monospace;
+max-width:1250px;
+margin:30px auto;
+padding:22px;
+line-height:1.45;
+}}
 
-        .kpi-value {{
-          font-size: 72px;
-          font-weight: 700;
-        }}
+.box {{
+border:1px solid {theme["accent"]};
+padding:26px 30px;
+margin-bottom:28px;
+}}
 
-        .subtle {{
-          font-size: 28px;
-          opacity: 0.85;
-        }}
+.ascii-wrapper {{
+width:100%;
+overflow:hidden;
+}}
 
-        /* ---------------- Controls ---------------- */
-        .theme-buttons {{
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
-        }}
+.ascii-brand {{
+white-space:pre;
+font-size:14px;
+margin:0;
+display:block;
+}}
 
-        .theme-btn {{
-          padding: 5px 12px;
-          border: 1px solid {theme["accent"]};
-          text-decoration: none;
-          color: {theme["accent"]};
-          font-size: 12px;
-        }}
+.main-title {{
+font-size:44px;
+font-weight:700;
+}}
 
-        .theme-btn:hover {{
-          background: {theme["accent"]};
-          color: black;
-        }}
+.kpi-value {{
+font-size:72px;
+font-weight:700;
+}}
 
-        /* ---------------- Trend ---------------- */
-        pre.trend {{
-          margin: 0;
-          white-space: pre;
-          font-size: 16px;
-        }}
+.subtle {{
+font-size:28px;
+opacity:.85;
+}}
 
-        /* We intentionally DO NOT allow horizontal scrolling on mobile.
-           Instead we render a shorter-bar mobile version. */
-        .trend-mobile {{ display: none; }}
-        .trend-desktop {{ display: block; }}
+.theme-buttons {{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}}
 
-        /* ---------------- Inputs ---------------- */
-        input {{
-          background: transparent;
-          border: 1px solid {theme["accent"]};
-          color: {theme["accent"]};
-          padding: 7px;
-          width: 140px;
-          font-family: inherit;
-        }}
+.theme-btn {{
+padding:5px 12px;
+border:1px solid {theme["accent"]};
+text-decoration:none;
+color:{theme["accent"]};
+font-size:12px;
+}}
 
-        button {{
-          padding: 8px 16px;
-          border: 1px solid {theme["accent"]};
-          background: transparent;
-          color: {theme["accent"]};
-          cursor: pointer;
-          font-family: inherit;
-        }}
+pre.trend {{
+margin:0;
+white-space:pre;
+font-size:16px;
+}}
 
-        button:hover {{
-          background: {theme["accent"]};
-          color: black;
-        }}
+.trend-mobile {{
+display:none;
+}}
 
-        details summary {{
-          cursor: pointer;
-          user-select: none;
-          font-weight: 700;
-        }}
+.trend-desktop {{
+display:block;
+}}
 
-        /* ---------------- Mobile-only adjustments ---------------- */
-        @media (max-width: 600px) {{
-          body {{
-            padding: 14px;
-            margin: 16px auto;
-          }}
+input {{
+background:transparent;
+border:1px solid {theme["accent"]};
+color:{theme["accent"]};
+padding:7px;
+width:140px;
+font-family:inherit;
+}}
 
-          .box {{
-            padding: 16px;
-            margin-bottom: 18px;
-          }}
+button {{
+padding:8px 16px;
+border:1px solid {theme["accent"]};
+background:transparent;
+color:{theme["accent"]};
+cursor:pointer;
+font-family:inherit;
+}}
 
-          .main-title {{
-            font-size: 28px;
-            letter-spacing: 0.5px;
-          }}
+details summary {{
+cursor:pointer;
+font-weight:700;
+}}
 
-          .kpi-value {{
-            font-size: 44px;
-          }}
+@media (max-width:600px) {{
 
-          .subtle {{
-            font-size: 18px;
-          }}
+body {{
+padding:14px;
+margin:16px auto;
+}}
 
-          /* Scale ASCII down until it comfortably fits mobile width.
-             The clip container prevents overflow-based zoom. */
-          .ascii-brand {{
-            transform: scale(0.58);
-          }}
+.box {{
+padding:16px;
+margin-bottom:18px;
+}}
 
-          pre.trend {{
-            font-size: 13px;
-          }}
+.main-title {{
+font-size:28px;
+}}
 
-          input {{
-            width: 100%;
-            max-width: 260px;
-          }}
+.kpi-value {{
+font-size:44px;
+}}
 
-          .trend-mobile {{ display: block; }}
-          .trend-desktop {{ display: none; }}
-        }}
-      </style>
-    </head>
+.subtle {{
+font-size:18px;
+}}
 
-    <body>
+.ascii-brand {{
+font-size:2.8vw;
+}}
 
-      <div class="box">
-        <div class="ascii-clip">
+pre.trend {{
+font-size:13px;
+}}
+
+.trend-mobile {{
+display:block;
+}}
+
+.trend-desktop {{
+display:none;
+}}
+
+input {{
+width:100%;
+max-width:260px;
+}}
+
+}}
+
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<div class="ascii-wrapper">
+
 <pre class="ascii-brand">██████╗ ███████╗ █████╗ ██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗███████╗██████╗
 ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║██╔════╝██╔══██╗
 ██████╔╝█████╗  ███████║██████╔╝██████╔╝██╔████╔██║██║██╔██╗ ██║█████╗  ██████╔╝
 ██╔══██╗██╔══╝  ██╔══██║██╔══██╗██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══╝  ██╔══██╗
 ██████╔╝███████╗██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║██║ ╚████║███████╗██║  ██║
 ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝</pre>
-        </div>
 
-        <div class="main-title">BITCOIN HASHPRICE DASHBOARD</div>
-        Last Updated: {data["timestamp"]}
-      </div>
+</div>
 
-      <div class="box">
-        <div class="theme-buttons">
-          <a href="/?theme=orange" class="theme-btn">Orange</a>
-          <a href="/?theme=green" class="theme-btn">Green</a>
-          <a href="/?theme=blue" class="theme-btn">Blue</a>
-          <a href="/?theme=white" class="theme-btn">White</a>
-        </div>
-      </div>
+<div class="main-title">BITCOIN HASHPRICE DASHBOARD</div>
+Last Updated: {data["timestamp"]}
 
-      <div class="box">
-        <strong>BTC Spot Price</strong><br><br>
-        <div class="kpi-value">${data["spot"]:,.2f}</div>
-      </div>
+</div>
 
-      <div class="box">
-        <strong>Realtime Hashprice</strong><br><br>
-        <div class="kpi-value">${data["hashprice_rt"]:,.2f}</div>
-        <div class="subtle">
-          {"▲" if data["pct_vs_7d"] >= 0 else "▼"} {data["pct_vs_7d"]:+.2f}% vs 7D
-        </div>
-      </div>
+<div class="box">
 
-      <div class="box">
-        1-Day Raw: ${data["hashprice_1d"]:.2f}<br>
-        7-Day Smoothed: ${data["hashprice_7d"]:.2f}
-      </div>
+<div class="theme-buttons">
+<a href="/?theme=orange" class="theme-btn">Orange</a>
+<a href="/?theme=green" class="theme-btn">Green</a>
+<a href="/?theme=blue" class="theme-btn">Blue</a>
+<a href="/?theme=white" class="theme-btn">White</a>
+</div>
 
-      <div class="box">
-        <strong>Recent Trend</strong><br><br>
+</div>
 
-        <pre class="trend trend-desktop">{trend_ascii_desktop}</pre>
-        <pre class="trend trend-mobile">{trend_ascii_mobile}</pre>
-      </div>
+<div class="box">
+<strong>BTC Spot Price</strong><br><br>
+<div class="kpi-value">${data["spot"]:,.2f}</div>
+</div>
 
-      <div class="box">
-        <details>
-          <summary><strong>Profitability Calculator</strong></summary>
-          <div style="margin-top:16px;">
-            Total PH:<br>
-            <input id="ph" value="100"><br><br>
+<div class="box">
+<strong>Realtime Hashprice</strong><br><br>
+<div class="kpi-value">${data["hashprice_rt"]:,.2f}</div>
+<div class="subtle">
+{"▲" if data["pct_vs_7d"]>=0 else "▼"} {data["pct_vs_7d"]:+.2f}% vs 7D
+</div>
+</div>
 
-            Machine Efficiency (J/TH):<br>
-            <input id="eff" value="18"><br><br>
+<div class="box">
+1-Day Raw: ${data["hashprice_1d"]:.2f}<br>
+7-Day Smoothed: ${data["hashprice_7d"]:.2f}
+</div>
 
-            Power Price ($/kWh):<br>
-            <input id="power" value="0.05"><br><br>
+<div class="box">
 
-            <button onclick="calc()">Calculate</button>
-            <div id="result" style="margin-top:15px;"></div>
-          </div>
-        </details>
-      </div>
+<strong>Recent Trend</strong><br><br>
 
-      <div class="box">
-        <details>
-          <summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
-          <br><br>
+<pre class="trend trend-desktop">{trend_desktop}</pre>
+<pre class="trend trend-mobile">{trend_mobile}</pre>
 
-          <strong>Realtime Hashprice</strong><br>
-          This estimates what 1 PH earns today using live BTC price, a live fee environment estimate,
-          and a 1-day inferred network hashrate.<br><br>
+</div>
 
-          <strong>Core logic (conceptual)</strong><br>
-          (Block Reward + Estimated Fees) × ~144 blocks/day × BTC Price<br>
-          ÷ (Estimated Network Hashrate per day)<br><br>
+<div class="box">
 
-          <strong>Why 1-Day Network Hashrate?</strong><br>
-          Network hashrate isn’t measured directly. It’s inferred from block timing and difficulty.
-          A 1-day estimate reacts quickly enough for operations but avoids the worst noise from short bursts
-          of fast/slow blocks.<br><br>
+<details>
 
-          <strong>7-Day Smoothed Hashprice</strong><br>
-          The 7-day metric is a structural baseline. It smooths over volatility to show trend direction
-          rather than intraday chop.<br><br>
+<summary><strong>Profitability Calculator</strong></summary>
 
-          This dashboard intentionally separates:
-          • A fast economic pulse (Realtime)<br>
-          • A structural baseline (7-Day)<br><br>
+<div style="margin-top:16px;">
 
-          Use Realtime for decisions. Use 7-Day for sanity and strategy.
-        </details>
-      </div>
+Total PH:<br>
+<input id="ph" value="100"><br><br>
 
-      <script>
-        function calc() {{
-          let ph = parseFloat(document.getElementById("ph").value);
-          let eff = parseFloat(document.getElementById("eff").value);
-          let power = parseFloat(document.getElementById("power").value);
+Machine Efficiency (J/TH):<br>
+<input id="eff" value="18"><br><br>
 
-          let revenue = ph * {data["hashprice_rt"]};
-          let power_kw = ph * eff;
-          let power_cost = power_kw * 24 * power;
-          let profit = revenue - power_cost;
+Power Price ($/kWh):<br>
+<input id="power" value="0.05"><br><br>
 
-          document.getElementById("result").innerHTML =
-            "Daily Revenue: $" + revenue.toFixed(2) + "<br>" +
-            "Daily Power Cost: $" + power_cost.toFixed(2) + "<br>" +
-            "Daily Profit: $" + profit.toFixed(2);
-        }}
-      </script>
+<button onclick="calc()">Calculate</button>
 
-    </body>
-    </html>
-    """
+<div id="result" style="margin-top:15px;"></div>
+
+</div>
+
+</details>
+
+</div>
+
+<div class="box">
+
+<details>
+
+<summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
+
+<br><br>
+
+Realtime hashprice estimates the revenue for 1 PH of hashpower using:
+
+<br><br>
+
+(Block reward + estimated fees) × ~144 blocks/day × BTC price  
+÷ estimated network hashrate
+
+<br><br>
+
+A 1-day hashrate estimate gives responsiveness while filtering noise from
+individual fast/slow blocks.
+
+<br><br>
+
+The 7-day smoothed metric shows the structural trend rather than short-term
+volatility.
+
+<br><br>
+
+Use realtime for operations and 7-day for strategic context.
+
+</details>
+
+</div>
+
+<script>
+
+function calc() {{
+
+let ph=parseFloat(document.getElementById("ph").value)
+let eff=parseFloat(document.getElementById("eff").value)
+let power=parseFloat(document.getElementById("power").value)
+
+let revenue=ph*{data["hashprice_rt"]}
+let power_kw=ph*eff
+let power_cost=power_kw*24*power
+let profit=revenue-power_cost
+
+document.getElementById("result").innerHTML=
+
+"Daily Revenue: $"+revenue.toFixed(2)+"<br>"+
+"Daily Power Cost: $"+power_cost.toFixed(2)+"<br>"+
+"Daily Profit: $"+profit.toFixed(2)
+
+}}
+
+</script>
+
+</body>
+</html>
+"""
 
     return HTMLResponse(content=html)
