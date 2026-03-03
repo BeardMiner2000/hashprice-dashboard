@@ -59,10 +59,9 @@ def dashboard(request: Request):
             margin-bottom: 28px;
         }}
 
-        .ascii-wrap {{
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 8px;
+        .ascii-container {{
+            display: flex;
+            justify-content: center;
         }}
 
         .ascii-brand {{
@@ -104,7 +103,6 @@ def dashboard(request: Request):
             margin: 0;
             white-space: pre;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
             font-size: 16px;
         }}
 
@@ -126,6 +124,7 @@ def dashboard(request: Request):
             font-family: inherit;
         }}
 
+        /* Mobile scaling */
         @media (max-width: 600px) {{
             body {{
                 padding: 14px;
@@ -145,14 +144,8 @@ def dashboard(request: Request):
                 font-size: 18px;
             }}
             .ascii-brand {{
-                font-size: 10px;
-            }}
-            pre.trend {{
-                font-size: 13px;
-            }}
-            input {{
-                width: 100%;
-                max-width: 260px;
+                transform: scale(0.65);
+                transform-origin: top center;
             }}
         }}
     </style>
@@ -160,7 +153,7 @@ def dashboard(request: Request):
     <body>
 
     <div class="box">
-        <div class="ascii-wrap">
+        <div class="ascii-container">
 <pre class="ascii-brand">██████╗ ███████╗ █████╗ ██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗███████╗██████╗
 ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║██╔════╝██╔══██╗
 ██████╔╝█████╗  ███████║██████╔╝██████╔╝██╔████╔██║██║██╔██╗ ██║█████╗  ██████╔╝
@@ -225,8 +218,29 @@ def dashboard(request: Request):
         <details>
             <summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
             <br><br>
-            Realtime hashprice uses live BTC price and 1-day estimated network hashrate.
-            7-day smoothed provides structural trend context.
+
+            <strong>Realtime Hashprice</strong><br>
+            This estimates what 1 PH earns today using live BTC price,
+            live fee environment, and a 1-day estimated network hashrate.<br><br>
+
+            Formula:<br>
+            (Block Reward + Estimated Fees) × 144 Blocks × BTC Price<br>
+            ÷ 1-Day Estimated Network Hashrate<br><br>
+
+            <strong>Why 1-Day Hashrate?</strong><br>
+            Network hashrate cannot be directly observed in real time.
+            It is inferred from recent block intervals.
+            A 1-day estimate balances responsiveness and noise reduction.<br><br>
+
+            <strong>7-Day Smoothed Hashprice</strong><br>
+            The 7-day metric smooths both revenue and network hashrate.
+            This shows structural trend rather than short-term volatility.<br><br>
+
+            The dashboard intentionally separates:
+            • A fast economic pulse (Realtime)<br>
+            • A structural baseline (7-Day)<br><br>
+
+            Together, these create operational clarity for miners.
         </details>
     </div>
 
