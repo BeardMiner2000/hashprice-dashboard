@@ -17,10 +17,27 @@ def dashboard(request: Request):
     theme = THEMES.get(theme_name, THEMES["orange"])
     data = calculate()
 
+    trend = data["trend"]
+    max_val = trend["hashprice_1d"].max()
+
+    trend_rows = ""
+    for _, row in trend.iterrows():
+        percent = (row["hashprice_1d"] / max_val) * 100
+        trend_rows += f"""
+        <div class="trend-row">
+            <span class="trend-date">{row["time"].date()}</span>
+            <div class="trend-bar-wrapper">
+                <div class="trend-bar" style="width:{percent:.1f}%"></div>
+            </div>
+            <span class="trend-value">${row["hashprice_1d"]:.2f}</span>
+        </div>
+        """
+
     html = f"""
     <html>
     <head>
     <meta http-equiv="refresh" content="60">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {{
             background: {theme["bg"]};
@@ -28,34 +45,51 @@ def dashboard(request: Request):
             font-family: monospace;
             max-width: 1000px;
             margin: 40px auto;
+            padding: 20px;
         }}
+
+        @media (max-width: 768px) {{
+            body {{
+                margin: 20px auto;
+                padding: 14px;
+            }}
+        }}
+
         .box {{
             border: 1px solid {theme["accent"]};
-            padding: 20px;
+            padding: 18px;
             margin-bottom: 20px;
         }}
+
         .brand {{
             float: right;
+            font-size: 12px;
         }}
+
         .theme-row {{
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 20px;
+            font-size: 12px;
         }}
+
         .theme-buttons {{
             display: flex;
-            gap: 12px;
+            gap: 8px;
         }}
+
         .theme-btn {{
-            padding: 6px 14px;
+            padding: 4px 8px;
             border: 1px solid {theme["accent"]};
             text-decoration: none;
             color: {theme["accent"]};
         }}
+
         .theme-btn:hover {{
             background: {theme["accent"]};
             color: black;
         }}
+
         input {{
             background: transparent;
             border: 1px solid {theme["accent"]};
@@ -63,6 +97,7 @@ def dashboard(request: Request):
             padding: 6px;
             width: 120px;
         }}
+
         button {{
             padding: 6px 14px;
             border: 1px solid {theme["accent"]};
@@ -70,10 +105,41 @@ def dashboard(request: Request):
             color: {theme["accent"]};
             cursor: pointer;
         }}
+
         button:hover {{
             background: {theme["accent"]};
             color: black;
         }}
+
+        .trend-row {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 6px 0;
+        }}
+
+        .trend-date {{
+            min-width: 100px;
+            font-size: 12px;
+        }}
+
+        .trend-bar-wrapper {{
+            flex-grow: 1;
+            height: 14px;
+            background: rgba(255,255,255,0.05);
+        }}
+
+        .trend-bar {{
+            height: 100%;
+            background: {theme["accent"]};
+        }}
+
+        .trend-value {{
+            min-width: 70px;
+            text-align: right;
+            font-size: 12px;
+        }}
+
         details summary {{
             cursor: pointer;
         }}
@@ -89,7 +155,6 @@ def dashboard(request: Request):
 
     <div class="box">
         <div class="theme-row">
-            <strong>Theme:</strong>
             <div class="theme-buttons">
                 <a href="/?theme=orange" class="theme-btn">Orange</a>
                 <a href="/?theme=green" class="theme-btn">Green</a>
@@ -101,13 +166,13 @@ def dashboard(request: Request):
 
     <div class="box">
         <strong>BTC Spot Price</strong><br><br>
-        <span style="font-size:40px">${data["btc_price"]:,.2f}</span>
+        <span style="font-size:40px">${data["spot"]:,.2f}</span>
     </div>
 
     <div class="box">
         <strong>Realtime Hashprice</strong><br><br>
-        <span style="font-size:40px">${data["realtime_hashprice"]:,.2f}</span><br>
-        {"▲" if data["vs_7d"] >= 0 else "▼"} {data["vs_7d"]:.2f}% vs 7D
+        <span style="font-size:40px">${data["hashprice_rt"]:,.2f}</span><br>
+        {"▲" if data["pct_vs_7d"] >= 0 else "▼"} {data["pct_vs_7d"]:.2f}% vs 7D
     </div>
 
     <div class="box">
@@ -128,13 +193,13 @@ def dashboard(request: Request):
     </div>
 
     <div class="box">
-        1-Day Raw: ${data["raw_1d"]:.2f}<br>
-        7-Day Smoothed: ${data["smoothed_7d"]:.2f}
+        1-Day Raw: ${data["hashprice_1d"]:.2f}<br>
+        7-Day Smoothed: ${data["hashprice_7d"]:.2f}
     </div>
 
     <div class="box">
         <strong>Recent Trend</strong><br><br>
-        {data["trend_html"]}
+        {trend_rows}
     </div>
 
     <div class="box">
@@ -144,9 +209,7 @@ def dashboard(request: Request):
             Hashprice ($/PH/day) =
             (BTC Price × Daily BTC Issued) ÷ Network Hashrate (PH)
             <br><br>
-            This dashboard intentionally uses short-term
-            hashrate and fee estimates to reflect current
-            market conditions rather than long smoothing windows.
+            Uses raw daily revenue and live BTC pricing.
         </details>
     </div>
 
@@ -156,8 +219,8 @@ def dashboard(request: Request):
             let eff = parseFloat(document.getElementById("eff").value);
             let power = parseFloat(document.getElementById("power").value);
 
-            let revenue = ph * {data["realtime_hashprice"]};
-            let power_kw = ph * 1000 * eff / 1000;
+            let revenue = ph * {data["hashprice_rt"]};
+            let power_kw = ph * eff;
             let power_cost = power_kw * 24 * power;
             let profit = revenue - power_cost;
 
