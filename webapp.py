@@ -62,22 +62,18 @@ def dashboard(request: Request):
         .ascii-wrap {{
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            border: 1px solid rgba(255,255,255,0.08);
-            padding: 10px 12px;
-            margin-bottom: 14px;
+            padding-bottom: 8px;
         }}
 
         .ascii-brand {{
             font-size: 14px;
             white-space: pre;
             margin: 0;
-            opacity: 0.92;
         }}
 
         .main-title {{
             font-size: 44px;
             font-weight: 700;
-            letter-spacing: 1px;
         }}
 
         .kpi-value {{
@@ -102,11 +98,6 @@ def dashboard(request: Request):
             text-decoration: none;
             color: {theme["accent"]};
             font-size: 12px;
-        }}
-
-        .theme-btn:hover {{
-            background: {theme["accent"]};
-            color: black;
         }}
 
         pre.trend {{
@@ -135,33 +126,17 @@ def dashboard(request: Request):
             font-family: inherit;
         }}
 
-        button:hover {{
-            background: {theme["accent"]};
-            color: black;
-        }}
-
-        details summary {{
-            cursor: pointer;
-            user-select: none;
-            font-weight: 700;
-        }}
-
-        /* ---------------------------
-           Mobile-only adjustments
-           (desktop stays the same)
-        ----------------------------*/
         @media (max-width: 600px) {{
             body {{
                 padding: 14px;
                 margin: 16px auto;
             }}
             .box {{
-                padding: 16px 16px;
+                padding: 16px;
                 margin-bottom: 18px;
             }}
             .main-title {{
                 font-size: 28px;
-                letter-spacing: 0.5px;
             }}
             .kpi-value {{
                 font-size: 44px;
@@ -169,18 +144,11 @@ def dashboard(request: Request):
             .subtle {{
                 font-size: 18px;
             }}
-            .ascii-wrap {{
-                padding: 8px 10px;
-            }}
             .ascii-brand {{
                 font-size: 10px;
             }}
             pre.trend {{
                 font-size: 13px;
-            }}
-            .theme-btn {{
-                padding: 5px 10px;
-                font-size: 12px;
             }}
             input {{
                 width: 100%;
@@ -237,20 +205,16 @@ def dashboard(request: Request):
         <pre class="trend">{trend_ascii}</pre>
     </div>
 
-    <!-- Collapsed calculator moved between Trend and Methodology -->
     <div class="box">
         <details>
             <summary><strong>Profitability Calculator</strong></summary>
             <div style="margin-top:16px;">
                 Total PH:<br>
                 <input id="ph" value="100"><br><br>
-
                 Machine Efficiency (J/TH):<br>
                 <input id="eff" value="18"><br><br>
-
                 Power Price ($/kWh):<br>
                 <input id="power" value="0.05"><br><br>
-
                 <button onclick="calc()">Calculate</button>
                 <div id="result" style="margin-top:15px;"></div>
             </div>
@@ -261,34 +225,13 @@ def dashboard(request: Request):
         <details>
             <summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
             <br><br>
-
-            There are two economic lenses here:<br><br>
-
-            <strong>1) Realtime Hashprice</strong><br>
-            This asks: "If I mined right now, what would 1 PH earn today?"<br><br>
-
-            Calculated using:<br>
-            (Block Reward + Live Fee Estimate) × 144 blocks × Live BTC Price<br>
-            ÷ 1-Day Network Hashrate Estimate<br><br>
-
-            <strong>Why 1-Day Hashrate?</strong><br>
-            True hashrate cannot be observed instantly — it is inferred from recent block times.
-            A 1-day estimate reacts quickly but avoids noise from short bursts in block timing.<br><br>
-
-            <strong>2) 7-Day Smoothed Hashprice</strong><br>
-            Provides structural context. Revenue and hashrate are smoothed
-            over a rolling window to show trend rather than volatility.<br><br>
-
-            This dashboard separates:
-            • A fast-reacting economic pulse (Realtime)<br>
-            • A conservative structural baseline (7-Day)<br><br>
-
-            Built using public data sources only.
+            Realtime hashprice uses live BTC price and 1-day estimated network hashrate.
+            7-day smoothed provides structural trend context.
         </details>
     </div>
 
     <script>
-        function calc() {
+        function calc() {{
             let ph = parseFloat(document.getElementById("ph").value);
             let eff = parseFloat(document.getElementById("eff").value);
             let power = parseFloat(document.getElementById("power").value);
@@ -302,7 +245,7 @@ def dashboard(request: Request):
                 "Daily Revenue: $" + revenue.toFixed(2) + "<br>" +
                 "Daily Power Cost: $" + power_cost.toFixed(2) + "<br>" +
                 "Daily Profit: $" + profit.toFixed(2);
-        }
+        }}
     </script>
 
     </body>
