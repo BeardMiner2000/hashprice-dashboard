@@ -11,23 +11,20 @@ THEMES = {
     "white": {"accent": "#111111", "bg": "#ffffff"},
 }
 
-def build_trend_ascii(data):
+def build_trend_ascii(data, mobile=False):
     trend = data["trend"]
     max_val = max(float(v) for v in trend["hashprice_1d"]) if len(trend) else 1.0
     lines = []
 
+    bar_width = 56 if not mobile else 28
+
     for _, row in trend.iterrows():
         date_str = row["time"].strftime("%Y-%m-%d")
         val = float(row["hashprice_1d"])
-        bar_len = max(1, int((val / max_val) * 56))
+        bar_len = max(1, int((val / max_val) * bar_width))
         bar = "▓" * bar_len
-        lines.append(f"{date_str} | {bar:<56} ${val:,.2f}")
+        lines.append(f"{date_str} | {bar:<{bar_width}}")
 
-    marker = "▲" if data["pct_vs_7d"] >= 0 else "▼"
-    lines.append("─" * 96)
-    lines.append(
-        f"{data['timestamp'][:10]} | {'▓' * 50:<56} ${data['hashprice_rt']:,.2f} {marker} {data['pct_vs_7d']:+.2f}% vs 7D"
-    )
     return "\n".join(lines)
 
 @app.get("/", response_class=HTMLResponse)
@@ -35,6 +32,7 @@ def dashboard(request: Request):
     theme_name = request.query_params.get("theme", "orange")
     theme = THEMES.get(theme_name, THEMES["orange"])
     data = calculate()
+
     trend_ascii = build_trend_ascii(data)
 
     html = f"""
@@ -59,15 +57,11 @@ def dashboard(request: Request):
             margin-bottom: 28px;
         }}
 
-        .ascii-container {{
-            display: flex;
-            justify-content: center;
-        }}
-
         .ascii-brand {{
             font-size: 14px;
             white-space: pre;
             margin: 0;
+            text-align: left;
         }}
 
         .main-title {{
@@ -102,7 +96,6 @@ def dashboard(request: Request):
         pre.trend {{
             margin: 0;
             white-space: pre;
-            overflow-x: auto;
             font-size: 16px;
         }}
 
@@ -124,28 +117,40 @@ def dashboard(request: Request):
             font-family: inherit;
         }}
 
-        /* Mobile scaling */
         @media (max-width: 600px) {{
             body {{
                 padding: 14px;
                 margin: 16px auto;
             }}
+
             .box {{
                 padding: 16px;
                 margin-bottom: 18px;
             }}
+
             .main-title {{
                 font-size: 28px;
             }}
+
             .kpi-value {{
                 font-size: 44px;
             }}
+
             .subtle {{
                 font-size: 18px;
             }}
+
             .ascii-brand {{
-                transform: scale(0.65);
-                transform-origin: top center;
+                font-size: 3.2vw;
+            }}
+
+            pre.trend {{
+                font-size: 3.4vw;
+            }}
+
+            input {{
+                width: 100%;
+                max-width: 260px;
             }}
         }}
     </style>
@@ -153,14 +158,12 @@ def dashboard(request: Request):
     <body>
 
     <div class="box">
-        <div class="ascii-container">
 <pre class="ascii-brand">██████╗ ███████╗ █████╗ ██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗███████╗██████╗
 ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║██╔════╝██╔══██╗
 ██████╔╝█████╗  ███████║██████╔╝██████╔╝██╔████╔██║██║██╔██╗ ██║█████╗  ██████╔╝
 ██╔══██╗██╔══╝  ██╔══██║██╔══██╗██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══╝  ██╔══██╗
 ██████╔╝███████╗██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║██║ ╚████║███████╗██║  ██║
 ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝</pre>
-        </div>
 
         <div class="main-title">BITCOIN HASHPRICE DASHBOARD</div>
         Last Updated: {data["timestamp"]}
@@ -218,29 +221,8 @@ def dashboard(request: Request):
         <details>
             <summary><strong>How This Dashboard Calculates Hashprice</strong></summary>
             <br><br>
-
-            <strong>Realtime Hashprice</strong><br>
-            This estimates what 1 PH earns today using live BTC price,
-            live fee environment, and a 1-day estimated network hashrate.<br><br>
-
-            Formula:<br>
-            (Block Reward + Estimated Fees) × 144 Blocks × BTC Price<br>
-            ÷ 1-Day Estimated Network Hashrate<br><br>
-
-            <strong>Why 1-Day Hashrate?</strong><br>
-            Network hashrate cannot be directly observed in real time.
-            It is inferred from recent block intervals.
-            A 1-day estimate balances responsiveness and noise reduction.<br><br>
-
-            <strong>7-Day Smoothed Hashprice</strong><br>
-            The 7-day metric smooths both revenue and network hashrate.
-            This shows structural trend rather than short-term volatility.<br><br>
-
-            The dashboard intentionally separates:
-            • A fast economic pulse (Realtime)<br>
-            • A structural baseline (7-Day)<br><br>
-
-            Together, these create operational clarity for miners.
+            Realtime hashprice uses live BTC price and 1-day estimated network hashrate.
+            7-day smoothed provides structural trend context.
         </details>
     </div>
 
