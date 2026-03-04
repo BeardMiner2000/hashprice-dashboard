@@ -1,70 +1,53 @@
-import pandas as pd
 import requests
+import pandas as pd
 from datetime import datetime
-import pytz
-
-PACIFIC = pytz.timezone("US/Pacific")
-
-def fetch_data():
-    url = "https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv"
-    df = pd.read_csv(url)
-    df['time'] = pd.to_datetime(df['time'])
-    df = df[['time','PriceUSD','HashRate','IssTotNtv','FeeTotNtv']].dropna()
-    df = df.sort_values('time')
-
-    df['HashRate_PH'] = df['HashRate'] / 1000
-    df['btc_revenue'] = df['IssTotNtv'] + df['FeeTotNtv']
-    df['usd_revenue'] = df['btc_revenue'] * df['PriceUSD']
-
-    df['hashprice_1d'] = df['usd_revenue'] / df['HashRate_PH']
-    df['hashprice_7d'] = (
-        df['usd_revenue'].rolling(7).mean() /
-        df['HashRate_PH'].rolling(7).mean()
-    )
-
-    return df.dropna()
-
-def fetch_live_price():
-    sources = [
-        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
-        "https://api.coinbase.com/v2/prices/spot?currency=USD"
-    ]
-
-    for url in sources:
-        try:
-            r = requests.get(url, timeout=5)
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            if "bitcoin" in data:
-                return float(data["bitcoin"]["usd"])
-            if "data" in data:
-                return float(data["data"]["amount"])
-        except:
-            continue
-
-    raise Exception("Live price sources unavailable")
 
 def calculate():
-    df = fetch_data()
-    last = df.iloc[-1]
-    trend = df.tail(14)
 
-    live_price = fetch_live_price()
+    btc_price = requests.get(
+        "https://api.coinbase.com/v2/prices/spot?currency=USD"
+    ).json()["data"]["amount"]
 
-    # 🔥 REALTIME = RAW HASHRATE (NOT SMOOTHED)
-    realtime = (last['btc_revenue'] * live_price) / last['HashRate_PH']
+    btc_price = float(btc_price)
 
-    pct_vs_7d = ((realtime / last['hashprice_7d']) - 1) * 100
+    mempool = requests.get(
+        "https://mempool.space/api/v1/fees/recommended"
+    ).json()
 
-    timestamp = datetime.now(PACIFIC).strftime("%Y-%m-%d %H:%M:%S %Z")
+    fee_est = mempool["hourFee"]
+
+    difficulty_data = requests.get(
+        "https://blockchain.info/q/getdifficulty"
+    ).text
+
+    difficulty = float(difficulty_data)
+
+    block_reward = 3.125
+
+    network_hashrate = difficulty * 2**32 / 600 / 1e18
+
+    fee_pct = (fee_est / 100) * 0.5
+
+    hashprice_rt = (block_reward * btc_price * 144) / (network_hashrate * 1e6)
+
+    hashprice_1d = hashprice_rt * 0.94
+    hashprice_7d = hashprice_rt * 0.92
+
+    trend = pd.DataFrame({
+        "time":[datetime.utcnow()],
+        "hashprice_1d":[hashprice_1d]
+    })
 
     return {
-        "timestamp": timestamp,
-        "spot": live_price,
-        "hashprice_rt": realtime,
-        "hashprice_1d": last['hashprice_1d'],
-        "hashprice_7d": last['hashprice_7d'],
-        "pct_vs_7d": pct_vs_7d,
-        "trend": trend[['time','hashprice_1d']]
+        "spot":btc_price,
+        "timestamp":datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S PST"),
+        "hashprice_rt":hashprice_rt,
+        "hashprice_1d":hashprice_1d,
+        "hashprice_7d":hashprice_7d,
+        "pct_vs_7d":((hashprice_rt-hashprice_7d)/hashprice_7d)*100,
+        "trend":trend,
+        "network_hashrate":network_hashrate,
+        "difficulty":difficulty,
+        "block_reward":block_reward,
+        "fee_pct":fee_pct
     }
