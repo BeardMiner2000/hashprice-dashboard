@@ -52,46 +52,32 @@ def dashboard(request: Request):
 
     html = f"""
 <html>
-
 <head>
-
 <meta http-equiv="refresh" content="60">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 
-html,body {{
-overflow-x:hidden;
-}}
-
 body {{
 background:{theme["bg"]};
 color:{theme["accent"]};
 font-family:Menlo,Monaco,Consolas,monospace;
-max-width:1250px;
+max-width:1200px;
 margin:30px auto;
-padding:22px;
-line-height:1.45;
+padding:20px;
 }}
 
 .box {{
 border:1px solid {theme["accent"]};
-padding:26px 30px;
-margin-bottom:28px;
+padding:25px;
+margin-bottom:25px;
 }}
 
 .topbar {{
 border:1px solid {theme["accent"]};
-padding:10px 16px;
-margin-bottom:22px;
-display:flex;
-justify-content:center;
-}}
-
-.theme-buttons {{
-display:flex;
-gap:12px;
-flex-wrap:wrap;
+padding:10px;
+margin-bottom:20px;
+text-align:center;
 }}
 
 .theme-btn {{
@@ -99,11 +85,8 @@ padding:5px 12px;
 border:1px solid {theme["accent"]};
 text-decoration:none;
 color:{theme["accent"]};
-font-size:12px;
-}}
-
-.logo {{
-margin-bottom:10px;
+margin:5px;
+display:inline-block;
 }}
 
 .ascii-logo {{
@@ -115,76 +98,30 @@ margin:0;
 .mobile-logo {{
 display:none;
 font-size:34px;
-font-weight:700;
-letter-spacing:2px;
-}}
-
-.main-title {{
-font-size:44px;
-font-weight:700;
+font-weight:bold;
 }}
 
 .kpi-value {{
-font-size:72px;
-font-weight:700;
+font-size:70px;
+font-weight:bold;
 }}
 
 .subtle {{
 font-size:28px;
-opacity:.85;
 }}
 
 pre.trend {{
-margin:0;
-white-space:pre;
 font-size:16px;
-}}
-
-.trend-mobile {{
-display:none;
-}}
-
-.trend-desktop {{
-display:block;
-}}
-
-input {{
-background:transparent;
-border:1px solid {theme["accent"]};
-color:{theme["accent"]};
-padding:7px;
-width:140px;
-font-family:inherit;
-}}
-
-button {{
-padding:8px 16px;
-border:1px solid {theme["accent"]};
-background:transparent;
-color:{theme["accent"]};
-cursor:pointer;
-font-family:inherit;
-}}
-
-details summary {{
-cursor:pointer;
-font-weight:700;
 }}
 
 @media (max-width:600px) {{
 
-body {{
-padding:14px;
-margin:16px auto;
+.ascii-logo {{
+display:none;
 }}
 
-.box {{
-padding:16px;
-margin-bottom:18px;
-}}
-
-.main-title {{
-font-size:26px;
+.mobile-logo {{
+display:block;
 }}
 
 .kpi-value {{
@@ -195,51 +132,25 @@ font-size:44px;
 font-size:18px;
 }}
 
-.ascii-logo {{
-display:none;
-}}
-
-.mobile-logo {{
-display:block;
-}}
-
 pre.trend {{
 font-size:13px;
-}}
-
-.trend-mobile {{
-display:block;
-}}
-
-.trend-desktop {{
-display:none;
-}}
-
-input {{
-width:100%;
-max-width:260px;
 }}
 
 }}
 
 </style>
-
 </head>
 
 <body>
 
 <div class="topbar">
-<div class="theme-buttons">
 <a href="/?theme=orange" class="theme-btn">Orange</a>
 <a href="/?theme=green" class="theme-btn">Green</a>
 <a href="/?theme=blue" class="theme-btn">Blue</a>
 <a href="/?theme=white" class="theme-btn">White</a>
 </div>
-</div>
 
 <div class="box">
-
-<div class="logo">
 
 <pre class="ascii-logo">
 ██████╗ ███████╗ █████╗ ██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗███████╗██████╗
@@ -250,14 +161,39 @@ max-width:260px;
 ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝
 </pre>
 
-<div class="mobile-logo">
-BEARDMINER
-</div>
+<div class="mobile-logo">BEARDMINER</div>
 
-</div>
-
-<div class="main-title">BITCOIN HASHPRICE DASHBOARD</div>
+<h1>BITCOIN HASHPRICE DASHBOARD</h1>
 
 Last Updated: {data["timestamp"]}
 
 </div>
+
+<div class="box">
+<strong>BTC Spot Price</strong><br><br>
+<div class="kpi-value">${data["spot"]:,.2f}</div>
+</div>
+
+<div class="box">
+<strong>Realtime Hashprice</strong><br><br>
+<div class="kpi-value">${data["hashprice_rt"]:,.2f}</div>
+<div class="subtle">
+{"▲" if data["pct_vs_7d"]>=0 else "▼"} {data["pct_vs_7d"]:+.2f}% vs 7D
+</div>
+</div>
+
+<div class="box">
+1-Day Raw: ${data["hashprice_1d"]:.2f}<br>
+7-Day Smoothed: ${data["hashprice_7d"]:.2f}
+</div>
+
+<div class="box">
+<strong>Recent Trend</strong><br><br>
+<pre class="trend">{trend_desktop}</pre>
+</div>
+
+</body>
+</html>
+"""
+
+    return HTMLResponse(content=html)
