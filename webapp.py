@@ -222,6 +222,57 @@ max-width:260px;
 
 }}
 
+
+/* ----- HEADER HANDLING ----- */
+
+.header-ascii {
+  font-family: monospace;
+  white-space: pre;
+  line-height: 1.1;
+}
+
+.header-mobile {
+  display:none;
+  font-family:monospace;
+  font-weight:bold;
+  letter-spacing:4px;
+  font-size:32px;
+}
+
+@media (max-width:700px){
+
+  .header-ascii{
+    display:none;
+  }
+
+  .header-mobile{
+    display:block;
+  }
+
+  .trend-box{
+    font-size:12px;
+  }
+
+}
+
+
+
+.trend-box{
+  overflow-x:hidden;
+  padding-right:10px;
+}
+
+.trend-separator{
+  margin-top:10px;
+  margin-bottom:10px;
+  border-top:1px solid currentColor;
+}
+
+.trend-today{
+  padding-top:6px;
+}
+
+
 </style>
 
 </head>
