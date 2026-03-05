@@ -60,217 +60,217 @@ def dashboard(request: Request):
 
 <style>
 
-html,body {{
+html,body {{{{
 overflow-x:hidden;
-}}
+}}}}
 
-body {{
-background:{theme["bg"]};
-color:{theme["accent"]};
+body {{{{
+background:{{theme["bg"]}};
+color:{{theme["accent"]}};
 font-family:Menlo,Monaco,Consolas,monospace;
 max-width:1250px;
 margin:30px auto;
 padding:22px;
 line-height:1.45;
-}}
+}}}}
 
-.box {{
-border:1px solid {theme["accent"]};
+.box {{{{
+border:1px solid {{theme["accent"]}};
 padding:26px 30px;
 margin-bottom:28px;
-}}
+}}}}
 
-.topbar {{
-border:1px solid {theme["accent"]};
+.topbar {{{{
+border:1px solid {{theme["accent"]}};
 padding:10px 16px;
 margin-bottom:22px;
 display:flex;
 justify-content:flex-start;
-}}
+}}}}
 
-.theme-buttons {{
+.theme-buttons {{{{
 display:flex;
 gap:12px;
 flex-wrap:wrap;
-}}
+}}}}
 
-.theme-btn {{
+.theme-btn {{{{
 padding:5px 12px;
-border:1px solid {theme["accent"]};
+border:1px solid {{theme["accent"]}};
 text-decoration:none;
-color:{theme["accent"]};
+color:{{theme["accent"]}};
 font-size:12px;
-}}
+}}}}
 
-.logo {{
+.logo {{{{
 margin-bottom:10px;
-}}
+}}}}
 
-.ascii-logo {{
+.ascii-logo {{{{
 font-size:14px;
 white-space:pre;
 margin:0;
-}}
+}}}}
 
-.mobile-logo {{
+.mobile-logo {{{{
 display:none;
 font-size:34px;
 font-weight:700;
 letter-spacing:2px;
-}}
+}}}}
 
-.main-title {{
+.main-title {{{{
 font-size:44px;
 font-weight:700;
-}}
+}}}}
 
-.kpi-value {{
+.kpi-value {{{{
 font-size:72px;
 font-weight:700;
-}}
+}}}}
 
-.subtle {{
+.subtle {{{{
 font-size:28px;
 opacity:.85;
-}}
+}}}}
 
-pre.trend {{
+pre.trend {{{{
 margin:0;
 white-space:pre;
 font-size:16px;
-}}
+}}}}
 
-.trend-mobile {{
+.trend-mobile {{{{
 display:none;
-}}
+}}}}
 
-.trend-desktop {{
+.trend-desktop {{{{
 display:block;
-}}
+}}}}
 
-input {{
+input {{{{
 background:transparent;
-border:1px solid {theme["accent"]};
-color:{theme["accent"]};
+border:1px solid {{theme["accent"]}};
+color:{{theme["accent"]}};
 padding:7px;
 width:140px;
 font-family:inherit;
-}}
+}}}}
 
-button {{
+button {{{{
 padding:8px 16px;
-border:1px solid {theme["accent"]};
+border:1px solid {{theme["accent"]}};
 background:transparent;
-color:{theme["accent"]};
+color:{{theme["accent"]}};
 cursor:pointer;
 font-family:inherit;
-}}
+}}}}
 
-details summary {{
+details summary {{{{
 cursor:pointer;
 font-weight:700;
-}}
+}}}}
 
-@media (max-width:600px) {{
+@media (max-width:600px) {{{{
 
-body {{
+body {{{{
 padding:14px;
 margin:16px auto;
-}}
+}}}}
 
-.box {{
+.box {{{{
 padding:16px;
 margin-bottom:18px;
-}}
+}}}}
 
-.main-title {{
+.main-title {{{{
 font-size:26px;
-}}
+}}}}
 
-.kpi-value {{
+.kpi-value {{{{
 font-size:44px;
-}}
+}}}}
 
-.subtle {{
+.subtle {{{{
 font-size:18px;
-}}
+}}}}
 
-.ascii-logo {{
+.ascii-logo {{{{
 display:none;
-}}
+}}}}
 
-.mobile-logo {{
+.mobile-logo {{{{
 display:block;
-}}
+}}}}
 
-pre.trend {{
+pre.trend {{{{
 font-size:13px;
-}}
+}}}}
 
-.trend-mobile {{
+.trend-mobile {{{{
 display:block;
-}}
+}}}}
 
-.trend-desktop {{
+.trend-desktop {{{{
 display:none;
-}}
+}}}}
 
-input {{
+input {{{{
 width:100%;
 max-width:260px;
-}}
+}}}}
 
-}}
+}}}}
 
 
 /* ----- HEADER HANDLING ----- */
 
-.header-ascii {
+.header-ascii {{
   font-family: monospace;
   white-space: pre;
   line-height: 1.1;
-}
+}}
 
-.header-mobile {
+.header-mobile {{
   display:none;
   font-family:monospace;
   font-weight:bold;
   letter-spacing:4px;
   font-size:32px;
-}
+}}
 
-@media (max-width:700px){
+@media (max-width:700px){{
 
-  .header-ascii{
+  .header-ascii{{
     display:none;
-  }
+  }}
 
-  .header-mobile{
+  .header-mobile{{
     display:block;
-  }
+  }}
 
-  .trend-box{
+  .trend-box{{
     font-size:12px;
-  }
+  }}
 
-}
+}}
 
 
 
-.trend-box{
+.trend-box{{
   overflow-x:hidden;
   padding-right:10px;
-}
+}}
 
-.trend-separator{
+.trend-separator{{
   margin-top:10px;
   margin-bottom:10px;
   border-top:1px solid currentColor;
-}
+}}
 
-.trend-today{
+.trend-today{{
   padding-top:6px;
-}
+}}
 
 
 </style>
