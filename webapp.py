@@ -1,3 +1,15 @@
+
+import os
+import json
+
+BRAND=os.getenv("BRAND","beardminer")
+
+with open(f"brands/{BRAND}.json") as f:
+    BRAND_CONFIG=json.load(f)
+
+ASCII_HEADER=BRAND_CONFIG["ascii"]
+BRAND_NAME=BRAND_CONFIG["name"]
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from hashprice_engine import calculate
@@ -302,7 +314,7 @@ max-width:260px;
 </pre>
 
 <div class="mobile-logo">
-BEARDMINER
+{BRAND_NAME}
 </div>
 
 </div>
