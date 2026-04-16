@@ -1,7 +1,7 @@
 import os
 import json
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from hashprice_engine import calculate
 
 BRAND = os.getenv("BRAND", "beardminer")
@@ -42,6 +42,34 @@ def build_trend_rows(data):
         "is_live": True,
     })
     return rows
+
+
+def build_api_payload(data):
+    return {
+        "timestamp": data["timestamp"],
+        "spot": float(data["spot"]),
+        "spot_source": data["spot_source"],
+        "hashprice_rt": float(data["hashprice_rt"]),
+        "hashprice_1d": float(data["hashprice_1d"]),
+        "hashprice_7d": float(data["hashprice_7d"]),
+        "pct_vs_7d": float(data["pct_vs_7d"]),
+        "network_hashrate_ph": float(data["network_hashrate_ph"]),
+        "network_hashrate_source": data["network_hashrate_source"],
+        "bitcoin_per_block": float(data["bitcoin_per_block"]),
+        "issuance_btc_day": float(data["issuance_btc_day"]),
+        "fee_btc_day": float(data["fee_btc_day"]),
+        "fee_source": data["fee_source"],
+        "btc_revenue_day": float(data["btc_revenue_day"]),
+        "fee_pct": float(data["fee_pct"]),
+        "source_coinmetrics": data["source_coinmetrics"],
+        "trend": [
+            {
+                "time": row["time"].strftime("%Y-%m-%d"),
+                "hashprice_1d": float(row["hashprice_1d"]),
+            }
+            for _, row in data["trend"].iterrows()
+        ],
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -280,3 +308,13 @@ function calc() {{
 </html>
 """
     return HTMLResponse(content=html)
+
+
+@app.get("/api/hashprice", response_class=JSONResponse)
+def hashprice_api():
+    return JSONResponse(content=build_api_payload(calculate()))
+
+
+@app.get("/healthz", response_class=JSONResponse)
+def healthcheck():
+    return JSONResponse(content={"status": "ok"})
