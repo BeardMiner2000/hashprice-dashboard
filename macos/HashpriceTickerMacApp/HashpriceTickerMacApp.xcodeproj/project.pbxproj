@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		241CDC2454D3DCBA267F2DD8 /* HashpriceTickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4F449F5EE2223EA7A5F1D8 /* HashpriceTickerApp.swift */; };
 		363C39CA5FD02BF37A02A85F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25BAAA8C5F5C6622A5A0FCD3 /* SettingsView.swift */; };
+		498DA55A493655DBF4851775 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2988FE18C6CECAE59A7EAB2 /* Assets.xcassets */; };
 		6716102223D1EECB0FF53A44 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F606FCCC89C2026A31ACA02C /* StatusBarController.swift */; };
 		9ED3423563A8FA9F4E6BE8E9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95EA467E01124D2E33130C1 /* ContentView.swift */; };
 		A497A58178C81A8838E67290 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41CCFA09E40AC6EB49F86074 /* AppState.swift */; };
@@ -21,6 +22,7 @@
 		41CCFA09E40AC6EB49F86074 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		7413E4925AF855E1583EA47B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA4F449F5EE2223EA7A5F1D8 /* HashpriceTickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HashpriceTickerApp.swift; sourceTree = "<group>"; };
+		B2988FE18C6CECAE59A7EAB2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B94EAF647124EC82A553CA05 /* HashpriceTicker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HashpriceTicker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D95EA467E01124D2E33130C1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F606FCCC89C2026A31ACA02C /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
@@ -52,6 +54,7 @@
 		FBB01DA73C68B9015B370268 = {
 			isa = PBXGroup;
 			children = (
+				B2988FE18C6CECAE59A7EAB2 /* Assets.xcassets */,
 				9F459013E93EDB9F63E2F912 /* Sources */,
 				59F82FA248759069850B4A2C /* Products */,
 			);
@@ -65,6 +68,7 @@
 			buildConfigurationList = 517A5DDA9ACBEE3735FE610D /* Build configuration list for PBXNativeTarget "HashpriceTicker" */;
 			buildPhases = (
 				3018CFE8418A24A83098BD23 /* Sources */,
+				91DE206CA5553071C2E342E2 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -111,6 +115,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		91DE206CA5553071C2E342E2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				498DA55A493655DBF4851775 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		3018CFE8418A24A83098BD23 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -146,7 +161,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.beardminer.hashpriceticker;
-				PRODUCT_NAME = HashpriceTicker;
+				PRODUCT_NAME = "Hashprice Ticker";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
@@ -225,7 +240,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.beardminer.hashpriceticker;
-				PRODUCT_NAME = HashpriceTicker;
+				PRODUCT_NAME = "Hashprice Ticker";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
