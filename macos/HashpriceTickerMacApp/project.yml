@@ -1,0 +1,24 @@
+name: HashpriceTickerMacApp
+options:
+  minimumXcodeGenVersion: 2.38.0
+targets:
+  HashpriceTicker:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_NAME: HashpriceTicker
+        PRODUCT_BUNDLE_IDENTIFIER: com.beardminer.hashpriceticker
+        INFOPLIST_FILE: Sources/Info.plist
+        SWIFT_VERSION: 5.0
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+        GENERATE_INFOPLIST_FILE: NO
+        LSUIElement: YES
+        DEVELOPMENT_TEAM: ""
+    scheme:
+      testTargets: []
