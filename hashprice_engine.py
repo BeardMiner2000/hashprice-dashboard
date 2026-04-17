@@ -65,24 +65,27 @@ def fetch_live_price():
         except Exception:
             continue
 
-    raise RuntimeError("Live price sources unavailable")
+    return None, None
 
 
 def fetch_spot_24h_average():
     """
     Return a 24h average BTC/USD spot using CoinGecko hourly market chart data.
     """
-    url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=2&interval=hourly"
-    data = _safe_get_json(url)
-    prices = data.get("prices", [])
-    if not prices:
-        return None, None
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=2&interval=hourly"
+        data = _safe_get_json(url)
+        prices = data.get("prices", [])
+        if not prices:
+            return None, None
 
-    values = [float(point[1]) for point in prices[-24:]]
-    if not values:
-        return None, None
+        values = [float(point[1]) for point in prices[-24:]]
+        if not values:
+            return None, None
 
-    return sum(values) / len(values), "CoinGecko 24h hourly average"
+        return sum(values) / len(values), "CoinGecko 24h hourly average"
+    except Exception:
+        return None, None
 
 
 def fetch_live_hashrate_ph():
@@ -169,6 +172,9 @@ def calculate():
     live_hashrate_ph, hashrate_source = fetch_live_hashrate_ph()
     fee_btc_day_live, fee_source = fetch_live_fee_btc_day()
 
+    live_price = float(live_price) if live_price is not None else float(last["PriceUSD"])
+    price_source = price_source or "Coin Metrics daily"
+
     # Prefer explicit 24h/current stats when available, otherwise fall back.
     if current_hashrate_24h_ph is not None:
         network_hashrate_ph = float(current_hashrate_24h_ph)
@@ -191,7 +197,8 @@ def calculate():
     prev_hashprice_7d = float(prev["hashprice_7d"])
     hashprice_7d_change_pct = ((float(last["hashprice_7d"]) / prev_hashprice_7d) - 1.0) * 100.0 if prev_hashprice_7d else None
 
-    spot_avg_24h = float(spot_avg_24h) if spot_avg_24h is not None else None
+    spot_avg_24h = float(spot_avg_24h) if spot_avg_24h is not None else float(last["PriceUSD"])
+    spot_avg_24h_source = spot_avg_24h_source or "Coin Metrics daily"
     spot_vs_24h_pct = ((live_price / spot_avg_24h) - 1.0) * 100.0 if spot_avg_24h else None
 
     hashrate_avg_24h_ph = float(avg_hashrate_24h_ph) if avg_hashrate_24h_ph is not None else None
