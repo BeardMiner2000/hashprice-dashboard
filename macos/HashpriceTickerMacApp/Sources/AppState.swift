@@ -214,8 +214,6 @@ final class AppState: ObservableObject {
     }
 
     private func buildTickerSegments() -> [(String, [NSAttributedString.Key: Any])] {
-        let directionAttributes = pctVs7dPositive ? positiveAttributes : negativeAttributes
-
         return [
             ("₿ ", accentAttributes),
             (bitcoinText, neutralValueAttributes),
@@ -229,13 +227,9 @@ final class AppState: ObservableObject {
             (sevenDayText, neutralValueAttributes),
             (sevenDayComparisonText, comparisonAttributes(for: sevenDayComparisonText)),
             (spacer, separatorAttributes),
-            ("HASH ", labelAttributes),
+            ("NETWORK ", labelAttributes),
             (hashrateText, neutralValueAttributes),
             (hashrateComparisonText, comparisonAttributes(for: hashrateComparisonText)),
-            (spacer, separatorAttributes),
-            ("FEE% ", labelAttributes),
-            (feePctText, positiveAttributes),
-            (feePctComparisonText, comparisonAttributes(for: feePctComparisonText)),
             (spacer, separatorAttributes)
         ]
     }

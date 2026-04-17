@@ -10,7 +10,7 @@ struct ContentView: View {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [Color.orange, Color.yellow],
+                                colors: [Color(red: 0.97, green: 0.59, blue: 0.10), Color(red: 0.98, green: 0.71, blue: 0.18)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -59,13 +59,11 @@ struct ContentView: View {
                 metricRow("Realtime", "\(appState.realtimeText)\(appState.hashpriceComparisonText)", accent: colorForComparison(appState.hashpriceComparisonText, fallback: .white))
                 metricRow("Vs 7D", appState.pctVs7dText, accent: appState.pctVs7dPositive ? Color.green : Color.red)
                 metricRow("BTC Spot", "$\(appState.bitcoinText)\(appState.bitcoinComparisonText)", accent: colorForComparison(appState.bitcoinComparisonText, fallback: .white))
-                metricRow("Hashrate", "\(appState.hashrateText)\(appState.hashrateComparisonText)", accent: colorForComparison(appState.hashrateComparisonText, fallback: Color.white.opacity(0.9)))
-                metricRow("Fees/day", appState.feesText, accent: Color.green)
+                metricRow("Network", "\(appState.hashrateText)\(appState.hashrateComparisonText)", accent: colorForComparison(appState.hashrateComparisonText, fallback: Color.white.opacity(0.9)))
+                metricRow("7D Avg", "\(appState.sevenDayText)\(appState.sevenDayComparisonText)", accent: colorForComparison(appState.sevenDayComparisonText, fallback: Color.white.opacity(0.88)))
+                metricRow("1D Raw", appState.oneDayText, accent: Color.white.opacity(0.88))
                 metricRow("Issuance/day", appState.issuanceText, accent: Color.white.opacity(0.9))
                 metricRow("Revenue/day", appState.revenueText, accent: Color.white.opacity(0.95))
-                metricRow("1D Raw", appState.oneDayText, accent: Color.white.opacity(0.88))
-                metricRow("7D Avg", "\(appState.sevenDayText)\(appState.sevenDayComparisonText)", accent: colorForComparison(appState.sevenDayComparisonText, fallback: Color.white.opacity(0.88)))
-                metricRow("Fee %", "\(appState.feePctText)\(appState.feePctComparisonText)", accent: colorForComparison(appState.feePctComparisonText, fallback: Color.green))
                 metricRow("Block Reward", appState.blockRewardText, accent: Color.orange)
             }
 
@@ -122,16 +120,21 @@ struct ContentView: View {
                     .foregroundStyle(.white.opacity(0.48))
             }
 
-            Text(appState.currentFrame)
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.black.opacity(0.33))
-                )
+            HStack(spacing: 0) {
+                Text("₿ ")
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color(red: 0.97, green: 0.62, blue: 0.16))
+                Text(appState.currentFrame)
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.black.opacity(0.33))
+            )
         }
         .padding(12)
         .background(

@@ -127,11 +127,27 @@ def fetch_hashrate_24h_stats():
         avg_hashrate = float(rows[-1]["avgHashrate"]) if rows else 0.0
 
         if current_hashrate <= 0 or avg_hashrate <= 0:
-            return None, None, None
+            raise RuntimeError("mempool hashrate payload missing values")
 
         current_ph = current_hashrate / 1_000_000_000_000_000.0
         avg_ph = avg_hashrate / 1_000_000_000_000_000.0
         return current_ph, avg_ph, "mempool.space 24h average"
+    except Exception:
+        pass
+
+    try:
+        data = _safe_get_json("https://api.blockchain.info/charts/hash-rate?timespan=2days&sampled=false&metadata=false&format=json")
+        rows = data.get("values", [])
+        if not rows:
+            return None, None, None
+
+        values_ph = [float(row["y"]) / 1000.0 for row in rows if row.get("y") is not None]
+        if not values_ph:
+            return None, None, None
+
+        current_ph = values_ph[-1]
+        avg_ph = sum(values_ph) / len(values_ph)
+        return current_ph, avg_ph, "Blockchain.com 2-day chart average"
     except Exception:
         return None, None, None
 
