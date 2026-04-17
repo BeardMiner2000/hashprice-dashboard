@@ -191,16 +191,16 @@ def calculate():
     live_price = float(live_price) if live_price is not None else float(last["PriceUSD"])
     price_source = price_source or "Coin Metrics daily"
 
-    # Prefer explicit 24h/current stats when available, otherwise fall back.
+    # Keep the displayed dashboard hashrate stable on the latest daily Coin Metrics row.
+    # Use 24h/current hashrate inputs only for comparison baselines.
+    network_hashrate_ph = float(last["HashRate_PH"])
+    hashrate_source = "Coin Metrics daily"
+
+    comparison_current_hashrate_ph = None
     if current_hashrate_24h_ph is not None:
-        network_hashrate_ph = float(current_hashrate_24h_ph)
-        hashrate_source = hashrate_24h_source
+        comparison_current_hashrate_ph = float(current_hashrate_24h_ph)
     elif live_hashrate_ph:
-        network_hashrate_ph = float(live_hashrate_ph)
-        hashrate_source = hashrate_source
-    else:
-        network_hashrate_ph = float(last["HashRate_PH"])
-        hashrate_source = "Coin Metrics daily"
+        comparison_current_hashrate_ph = float(live_hashrate_ph)
 
     fee_btc_day = float(fee_btc_day_live) if fee_btc_day_live is not None else float(last["fees_btc_day"])
     fee_source = fee_source or "Coin Metrics daily"
@@ -218,7 +218,10 @@ def calculate():
     spot_vs_24h_pct = ((live_price / spot_avg_24h) - 1.0) * 100.0 if spot_avg_24h else None
 
     hashrate_avg_24h_ph = float(avg_hashrate_24h_ph) if avg_hashrate_24h_ph is not None else None
-    hashrate_vs_24h_pct = ((network_hashrate_ph / hashrate_avg_24h_ph) - 1.0) * 100.0 if hashrate_avg_24h_ph else None
+    hashrate_vs_24h_pct = (
+        ((comparison_current_hashrate_ph / hashrate_avg_24h_ph) - 1.0) * 100.0
+        if comparison_current_hashrate_ph and hashrate_avg_24h_ph else None
+    )
 
     hashprice_rt_avg_24h = None
     hashprice_rt_vs_24h_pct = None
@@ -247,6 +250,8 @@ def calculate():
         "trend": trend[["time", "hashprice_1d"]],
         "network_hashrate_ph": float(network_hashrate_ph),
         "network_hashrate_source": hashrate_source,
+        "network_hashrate_current_ph": float(comparison_current_hashrate_ph) if comparison_current_hashrate_ph is not None else None,
+        "network_hashrate_current_source": hashrate_24h_source or hashrate_source,
         "network_hashrate_24h_avg_ph": float(hashrate_avg_24h_ph) if hashrate_avg_24h_ph is not None else None,
         "network_hashrate_vs_24h_pct": float(hashrate_vs_24h_pct) if hashrate_vs_24h_pct is not None else None,
         "bitcoin_per_block": float(BLOCK_SUBSIDY_BTC),
