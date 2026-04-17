@@ -225,8 +225,10 @@ def calculate():
 
     hashprice_rt_avg_24h = None
     hashprice_rt_vs_24h_pct = None
-    if spot_avg_24h and hashrate_avg_24h_ph:
-        hashprice_rt_avg_24h = (btc_revenue_day * spot_avg_24h) / hashrate_avg_24h_ph
+    if spot_avg_24h and network_hashrate_ph:
+        # Keep the realtime comparison on the same stable hashrate basis as
+        # the displayed realtime hashprice so the percentage is apples-to-apples.
+        hashprice_rt_avg_24h = (btc_revenue_day * spot_avg_24h) / network_hashrate_ph
         if hashprice_rt_avg_24h:
             hashprice_rt_vs_24h_pct = ((realtime / hashprice_rt_avg_24h) - 1.0) * 100.0
 
@@ -267,7 +269,7 @@ def calculate():
         "spot_vs_24h_pct": float(spot_vs_24h_pct) if spot_vs_24h_pct is not None else None,
         "source_coinmetrics": COINMETRICS_CSV,
         "comparison_logic": {
-            "hashprice_rt": "current realtime vs last 24h average inputs",
+            "hashprice_rt": "current realtime vs last 24h average spot using the same stable daily hashrate basis",
             "spot": "current spot vs last 24h average spot",
             "network_hashrate_ph": "current hashrate vs last 24h average hashrate",
             "hashprice_7d": "current 7d window vs previous 7d window",
