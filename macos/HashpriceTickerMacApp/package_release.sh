@@ -79,8 +79,9 @@ tell application "Finder"
     set position of item "$APP_NAME" of container window to {240, 410}
     set position of item "Applications" of container window to {960, 410}
     try
-      set position of item ".background" of container window to {56, 660}
-      set position of item ".fseventsd" of container window to {1120, 660}
+      set position of item ".background" of container window to {1400, 980}
+      set position of item ".fseventsd" of container window to {1500, 980}
+      set position of item ".hidden" of container window to {1600, 980}
     end try
     update without registering applications
     delay 2
@@ -94,8 +95,10 @@ EOF
 bless --folder "$MOUNT_POINT" --openfolder "$MOUNT_POINT" || true
 chflags hidden "$MOUNT_POINT/.background" || true
 chflags hidden "$MOUNT_POINT/.fseventsd" || true
+chflags hidden "$MOUNT_POINT/.hidden" || true
 SetFile -a V "$MOUNT_POINT/.background" || true
 SetFile -a V "$MOUNT_POINT/.fseventsd" || true
+SetFile -a V "$MOUNT_POINT/.hidden" || true
 chmod -Rf go-w "$MOUNT_POINT"
 sync
 hdiutil detach "$DEVICE"
