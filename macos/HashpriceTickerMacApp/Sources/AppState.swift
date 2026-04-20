@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import AppKit
+import ServiceManagement
 
 struct HashpricePayload: Decodable {
     let timestamp: String
@@ -46,6 +47,8 @@ final class AppState: ObservableObject {
     @Published var hashrateComparisonText = ""
     @Published var feePctComparisonText = ""
     @Published var scrollSpeedPercent = 90
+    @Published var launchAtLoginEnabled = false
+    @Published var launchAtLoginAvailable = false
 
     let dashboardURL: URL
 
@@ -89,6 +92,7 @@ final class AppState: ObservableObject {
         let env = ProcessInfo.processInfo.environment
         self.apiURL = URL(string: env["HASHPRICE_API_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/api/hashprice")!
         self.dashboardURL = URL(string: env["HASHPRICE_DASHBOARD_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/")!
+        refreshLaunchAtLoginState()
 
         startTickerLoop()
         startRefreshLoop()
@@ -114,6 +118,32 @@ final class AppState: ObservableObject {
 
     func openDashboard() {
         NSWorkspace.shared.open(dashboardURL)
+    }
+
+    func openAboutPanel() {
+        NSApplication.shared.orderFrontStandardAboutPanel([
+            .applicationName: "Hashprice Ticker",
+            .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
+            .version: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1",
+            .credits: NSAttributedString(string: "Created by jlzoeckler"),
+            .copyright: Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String ?? "Copyright © 2026 jlzoeckler"
+        ])
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    func toggleLaunchAtLogin() {
+        guard launchAtLoginAvailable else { return }
+
+        do {
+            if launchAtLoginEnabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+            refreshLaunchAtLoginState()
+        } catch {
+            statusText = "Launch at login error: \(error.localizedDescription)"
+        }
     }
 
     func increaseScrollSpeed() {
@@ -288,5 +318,11 @@ final class AppState: ObservableObject {
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+
+    private func refreshLaunchAtLoginState() {
+        let status = SMAppService.mainApp.status
+        launchAtLoginAvailable = status != .notFound
+        launchAtLoginEnabled = status == .enabled
     }
 }

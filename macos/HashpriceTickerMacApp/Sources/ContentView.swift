@@ -77,6 +77,12 @@ struct ContentView: View {
                 appleButton("Dashboard") {
                     appState.openDashboard()
                 }
+                appleButton(appState.launchAtLoginEnabled ? "Login: On" : "Login: Off") {
+                    appState.toggleLaunchAtLogin()
+                }
+                appleButton("About") {
+                    appState.openAboutPanel()
+                }
                 appleButton("Quit") {
                     NSApplication.shared.terminate(nil)
                 }
