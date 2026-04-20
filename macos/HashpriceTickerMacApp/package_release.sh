@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT="$ROOT_DIR/HashpriceTickerMacApp.xcodeproj"
 SCHEME="HashpriceTicker"
 DERIVED_DATA="$ROOT_DIR/.derived-data"
-BUILD_DIR="$DERIVED_DATA/Build/Products/Release"
+BUILD_DIR="$DERIVED_DATA/Build/Products/Debug"
 APP_NAME="Hashprice Ticker.app"
 APP_PATH="$BUILD_DIR/$APP_NAME"
 DIST_DIR="$ROOT_DIR/dist"
@@ -22,7 +22,7 @@ mkdir -p "$DIST_DIR" "$DMG_DIR"
 xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
-  -configuration Release \
+  -configuration Debug \
   -derivedDataPath "$DERIVED_DATA" \
   -destination "platform=macOS,arch=arm64" \
   ARCHS=arm64 \
@@ -30,11 +30,20 @@ xcodebuild \
   build
 
 mkdir -p "$BACKGROUND_DIR"
-cp -R "$APP_PATH" "$DMG_DIR/$APP_NAME"
+ditto "$APP_PATH" "$DMG_DIR/$APP_NAME"
 cp "$BACKGROUND_SRC" "$BACKGROUND_DIR/dmg-background.png"
 ln -s /Applications "$DMG_DIR/Applications"
 
 rm -f "$DMG_PATH" "$RW_DMG_PATH"
+while hdiutil info | grep -q "/Volumes/$VOLUME_NAME"; do
+  EXISTING_DEVICE="$(hdiutil info | awk -v vol="/Volumes/$VOLUME_NAME" '$0 ~ vol {print prev} {prev=$1}' | tail -n 1)"
+  if [[ -n "${EXISTING_DEVICE:-}" ]]; then
+    hdiutil detach "$EXISTING_DEVICE" || true
+  else
+    break
+  fi
+done
+
 hdiutil create \
   -srcfolder "$DMG_DIR" \
   -volname "$VOLUME_NAME" \
@@ -44,12 +53,13 @@ hdiutil create \
   -size 20m \
   "$RW_DMG_PATH"
 
-DEVICE="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG_PATH" | awk '/Apple_HFS/ {print $1; exit}')"
-MOUNT_POINT="/Volumes/$VOLUME_NAME"
+ATTACH_OUTPUT="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG_PATH")"
+DEVICE="$(printf '%s\n' "$ATTACH_OUTPUT" | awk '/Apple_HFS/ {print $1; exit}')"
+MOUNT_POINT="$(printf '%s\n' "$ATTACH_OUTPUT" | awk -F '\t' '/Apple_HFS/ {print $3; exit}')"
 
 osascript <<EOF
 tell application "Finder"
-  tell disk "$VOLUME_NAME"
+  tell disk "$(basename "$MOUNT_POINT")"
     open
     set current view of container window to icon view
     set toolbar visible of container window to false
@@ -62,14 +72,20 @@ tell application "Finder"
     set background picture of viewOptions to file ".background:dmg-background.png"
     set position of item "$APP_NAME" of container window to {240, 410}
     set position of item "Applications" of container window to {960, 410}
+    update without registering applications
+    delay 2
     close
     open
-    update without registering applications
     delay 2
   end tell
 end tell
 EOF
 
+bless --folder "$MOUNT_POINT" --openfolder "$MOUNT_POINT" || true
+chflags hidden "$MOUNT_POINT/.background" || true
+chflags hidden "$MOUNT_POINT/.fseventsd" || true
+SetFile -a V "$MOUNT_POINT/.background" || true
+SetFile -a V "$MOUNT_POINT/.fseventsd" || true
 chmod -Rf go-w "$MOUNT_POINT"
 sync
 hdiutil detach "$DEVICE"

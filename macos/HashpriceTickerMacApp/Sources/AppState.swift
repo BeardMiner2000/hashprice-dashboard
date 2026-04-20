@@ -122,11 +122,11 @@ final class AppState: ObservableObject {
 
     func openAboutPanel() {
         NSApplication.shared.orderFrontStandardAboutPanel([
-            .applicationName: "Hashprice Ticker",
-            .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
-            .version: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1",
-            .credits: NSAttributedString(string: "Created by jlzoeckler"),
-            .copyright: Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String ?? "Copyright © 2026 jlzoeckler"
+            NSApplication.AboutPanelOptionKey.applicationName: "Hashprice Ticker",
+            NSApplication.AboutPanelOptionKey.applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
+            NSApplication.AboutPanelOptionKey.version: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1",
+            NSApplication.AboutPanelOptionKey.credits: NSAttributedString(string: "Created by jlzoeckler"),
+            NSApplication.AboutPanelOptionKey(rawValue: "Copyright"): Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String ?? "Copyright © 2026 jlzoeckler"
         ])
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
