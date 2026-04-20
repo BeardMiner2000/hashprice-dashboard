@@ -25,13 +25,16 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
 
 def add_arrow(image: Image.Image):
     arrow = Image.open(ARROW_SOURCE).convert("RGBA")
-    arrow = arrow.resize((690, 230), Image.Resampling.LANCZOS)
-    shadow = Image.new("RGBA", arrow.size, (0, 0, 0, 0))
-    shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.bitmap((0, 0), arrow.split()[-1], fill=(0, 0, 0, 48))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(10))
-    image.alpha_composite(shadow, (320, 324))
-    image.alpha_composite(arrow, (300, 298))
+    arrow = arrow.resize((500, 167), Image.Resampling.LANCZOS)
+    pixels = arrow.load()
+    for y in range(arrow.height):
+        for x in range(arrow.width):
+            r, g, b, a = pixels[x, y]
+            if r > 235 and g > 235 and b > 235:
+                pixels[x, y] = (255, 255, 255, 0)
+            else:
+                pixels[x, y] = (r, g, b, a)
+    image.alpha_composite(arrow, (360, 352))
 
 
 def main():
@@ -45,22 +48,10 @@ def main():
     gradient = gradient.filter(ImageFilter.GaussianBlur(48))
     image.alpha_composite(gradient)
 
-    panel = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    panel_draw = ImageDraw.Draw(panel)
-    panel_draw.rounded_rectangle(
-        (14, 14, WIDTH - 14, HEIGHT - 14),
-        radius=24,
-        outline=(215, 218, 224, 255),
-        width=2,
-        fill=(255, 255, 255, 92),
-    )
-    panel = panel.filter(ImageFilter.GaussianBlur(0.4))
-    image.alpha_composite(panel)
-
     draw = ImageDraw.Draw(image)
     title_font = load_font(42, bold=True)
     subtitle_font = load_font(20)
-    caption_font = load_font(18)
+    detail_font = load_font(18)
 
     draw.text(
         (WIDTH / 2, 92),
@@ -76,23 +67,15 @@ def main():
         fill=(94, 103, 117, 255),
         anchor="mm",
     )
+    draw.text(
+        (WIDTH / 2, 160),
+        "Then right-click the app and choose Open.",
+        font=detail_font,
+        fill=(94, 103, 117, 255),
+        anchor="mm",
+    )
 
     add_arrow(image)
-
-    draw.text(
-        (246, 616),
-        "Hashprice Ticker",
-        font=caption_font,
-        fill=(34, 39, 48, 255),
-        anchor="mm",
-    )
-    draw.text(
-        (960, 616),
-        "Applications",
-        font=caption_font,
-        fill=(34, 39, 48, 255),
-        anchor="mm",
-    )
 
     image.save(OUTPUT)
 
