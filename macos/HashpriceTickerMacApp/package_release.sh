@@ -19,6 +19,8 @@ VOLUME_NAME="Hashprice Ticker"
 rm -rf "$DERIVED_DATA" "$DMG_DIR"
 mkdir -p "$DIST_DIR" "$DMG_DIR"
 
+python3 "$ROOT_DIR/design/generate_dmg_background.py"
+
 xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
@@ -33,6 +35,10 @@ mkdir -p "$BACKGROUND_DIR"
 ditto "$APP_PATH" "$DMG_DIR/$APP_NAME"
 cp "$BACKGROUND_SRC" "$BACKGROUND_DIR/dmg-background.png"
 ln -s /Applications "$DMG_DIR/Applications"
+cat > "$DMG_DIR/.hidden" <<'EOF'
+.background
+.fseventsd
+EOF
 
 rm -f "$DMG_PATH" "$RW_DMG_PATH"
 while hdiutil info | grep -q "/Volumes/$VOLUME_NAME"; do
@@ -72,6 +78,10 @@ tell application "Finder"
     set background picture of viewOptions to file ".background:dmg-background.png"
     set position of item "$APP_NAME" of container window to {240, 410}
     set position of item "Applications" of container window to {960, 410}
+    try
+      set position of item ".background" of container window to {56, 660}
+      set position of item ".fseventsd" of container window to {1120, 660}
+    end try
     update without registering applications
     delay 2
     close
