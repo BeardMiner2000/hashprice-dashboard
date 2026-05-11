@@ -2,6 +2,12 @@
 
 Native macOS menu bar app project for the hosted hashprice API.
 
+Default API:
+
+```bash
+https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice
+```
+
 ## Generate the Xcode project
 
 ```bash

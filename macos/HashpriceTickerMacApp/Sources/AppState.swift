@@ -90,8 +90,8 @@ final class AppState: ObservableObject {
 
     init() {
         let env = ProcessInfo.processInfo.environment
-        self.apiURL = URL(string: env["HASHPRICE_API_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/api/hashprice")!
-        self.dashboardURL = URL(string: env["HASHPRICE_DASHBOARD_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/")!
+        self.apiURL = URL(string: env["HASHPRICE_API_URL"] ?? "https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice")!
+        self.dashboardURL = URL(string: env["HASHPRICE_DASHBOARD_URL"] ?? "https://hashprice.coffeecoffeecoffeecoffee.com/")!
         refreshLaunchAtLoginState()
 
         startTickerLoop()

@@ -1,0 +1,5 @@
+.DS_Store
+
+# Xcode/local packaging artifacts
+macos/HashpriceTickerMacApp/.derived-data/
+macos/HashpriceTickerMacApp/dist/

@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 WIDTH = 1200
 HEIGHT = 760
 OUTPUT = Path(__file__).with_name("dmg-background.png")
-ARROW_SOURCE = Path("/Users/jl/Downloads/arrow.jpg")
+ARROW_SOURCE = Path(__file__).with_name("arrow-transparent.png")
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -26,14 +26,6 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
 def add_arrow(image: Image.Image):
     arrow = Image.open(ARROW_SOURCE).convert("RGBA")
     arrow = arrow.resize((500, 167), Image.Resampling.LANCZOS)
-    pixels = arrow.load()
-    for y in range(arrow.height):
-        for x in range(arrow.width):
-            r, g, b, a = pixels[x, y]
-            if r > 235 and g > 235 and b > 235:
-                pixels[x, y] = (255, 255, 255, 0)
-            else:
-                pixels[x, y] = (r, g, b, a)
     image.alpha_composite(arrow, (360, 352))
 
 

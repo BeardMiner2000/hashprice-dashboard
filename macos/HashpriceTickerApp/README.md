@@ -20,8 +20,8 @@ swift run
 Optional environment variables:
 
 ```bash
-HASHPRICE_API_URL=https://hashprice-dashboard-dtsg.onrender.com/api/hashprice
-HASHPRICE_DASHBOARD_URL=https://hashprice-dashboard-dtsg.onrender.com/
+HASHPRICE_API_URL=https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice
+HASHPRICE_DASHBOARD_URL=https://hashprice.coffeecoffeecoffeecoffee.com/
 ```
 
 ## Current limitation

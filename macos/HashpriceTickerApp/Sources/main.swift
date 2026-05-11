@@ -8,8 +8,8 @@ private struct APIResponse: Decodable {
 }
 
 private enum AppConfig {
-    static let apiURL = URL(string: ProcessInfo.processInfo.environment["HASHPRICE_API_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/api/hashprice")!
-    static let dashboardURL = URL(string: ProcessInfo.processInfo.environment["HASHPRICE_DASHBOARD_URL"] ?? "https://hashprice-dashboard-dtsg.onrender.com/")!
+    static let apiURL = URL(string: ProcessInfo.processInfo.environment["HASHPRICE_API_URL"] ?? "https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice")!
+    static let dashboardURL = URL(string: ProcessInfo.processInfo.environment["HASHPRICE_DASHBOARD_URL"] ?? "https://hashprice.coffeecoffeecoffeecoffee.com/")!
     static let refreshInterval: TimeInterval = 60
     static let scrollInterval: TimeInterval = 0.18
     static let spacer = "     "

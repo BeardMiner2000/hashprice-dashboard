@@ -16,21 +16,13 @@ This removes the dependency on your laptop running the API locally.
 
 ## Deploy the API
 
-The repo now includes [`render.yaml`](/Users/jl/hashprice_project/render.yaml) for Render.
+The current hosted API is:
 
-1. Push this repo to GitHub.
-2. Create a new Render Blueprint service from the repo.
-3. Render will build from `requirements.txt` and start:
+- Dashboard: `https://hashprice.coffeecoffeecoffeecoffee.com/`
+- JSON API: `https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice`
+- Health check: `https://hashprice.coffeecoffeecoffeecoffee.com/healthz`
 
-```bash
-uvicorn webapp:app --host 0.0.0.0 --port $PORT
-```
-
-4. After deploy, confirm these URLs work:
-
-- Dashboard: `https://YOUR-RENDER-URL/`
-- JSON API: `https://YOUR-RENDER-URL/api/hashprice`
-- Health check: `https://YOUR-RENDER-URL/healthz`
+If you move the API again, update the app defaults or set `HASHPRICE_API_URL` and `HASHPRICE_DASHBOARD_URL`.
 
 ## Install the menu bar item with SwiftBar
 
@@ -54,8 +46,8 @@ cp /path/to/hashprice-menu-bar.env.example ~/.config/hashprice-menu-bar.env
 7. Edit `~/.config/hashprice-menu-bar.env` and set:
 
 ```bash
-HASHPRICE_API_URL=https://YOUR-RENDER-URL/api/hashprice
-HASHPRICE_DASHBOARD_URL=https://YOUR-RENDER-URL/
+HASHPRICE_API_URL=https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice
+HASHPRICE_DASHBOARD_URL=https://hashprice.coffeecoffeecoffeecoffee.com/
 ```
 
 The plugin reads that file automatically.
