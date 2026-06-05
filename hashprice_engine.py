@@ -6,6 +6,8 @@ import pytz
 PACIFIC = pytz.timezone("US/Pacific")
 COINMETRICS_CSV = "https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv"
 BLOCK_SUBSIDY_BTC = 3.125  # current subsidy after 2024 halving
+EXPECTED_BLOCKS_PER_DAY = 144.0
+HASHES_PER_DIFFICULTY = 2 ** 32
 
 
 def _safe_get_json(url: str, timeout: int = 8):
@@ -88,30 +90,8 @@ def fetch_spot_24h_average():
         return None, None
 
 
-def fetch_live_hashrate_ph():
-    """
-    Attempt live-ish hashrate from Hashrate Index / Luxor style endpoint.
-    Falls back to Coin Metrics daily estimate when unavailable.
-    """
-    candidates = [
-        ("Hashrate Index", "https://data.hashrateindex.com/api/network-data/bitcoin/hashrate"),
-    ]
-
-    for source_name, url in candidates:
-        try:
-            data = _safe_get_json(url)
-            if isinstance(data, dict):
-                for key in ("hashrate_1d", "hashrate", "current_hashrate"):
-                    if key in data and data[key] is not None:
-                        val = float(data[key])
-                        # Endpoint commonly returns EH/s. Convert to PH/s.
-                        if val < 10_000:
-                            return val * 1000.0, source_name
-                        return val, source_name
-        except Exception:
-            continue
-
-    return None, None
+def difficulty_to_ph(difficulty: float):
+    return (float(difficulty) * HASHES_PER_DIFFICULTY / 600.0) / 1_000_000_000_000_000.0
 
 
 def fetch_hashrate_24h_stats():
@@ -123,15 +103,17 @@ def fetch_hashrate_24h_stats():
     try:
         data = _safe_get_json("https://mempool.space/api/v1/mining/hashrate/24h")
         current_hashrate = float(data.get("currentHashrate", 0))
+        current_difficulty = float(data.get("currentDifficulty", 0))
         rows = data.get("hashrates", [])
         avg_hashrate = float(rows[-1]["avgHashrate"]) if rows else 0.0
 
-        if current_hashrate <= 0 or avg_hashrate <= 0:
+        if current_hashrate <= 0 or avg_hashrate <= 0 or current_difficulty <= 0:
             raise RuntimeError("mempool hashrate payload missing values")
 
         current_ph = current_hashrate / 1_000_000_000_000_000.0
         avg_ph = avg_hashrate / 1_000_000_000_000_000.0
-        return current_ph, avg_ph, "mempool.space 24h average"
+        difficulty_implied_ph = difficulty_to_ph(current_difficulty)
+        return current_ph, avg_ph, current_difficulty, difficulty_implied_ph, "mempool.space"
     except Exception:
         pass
 
@@ -139,39 +121,39 @@ def fetch_hashrate_24h_stats():
         data = _safe_get_json("https://api.blockchain.info/charts/hash-rate?timespan=2days&sampled=false&metadata=false&format=json")
         rows = data.get("values", [])
         if not rows:
-            return None, None, None
+            return None, None, None, None, None
 
         values_ph = [float(row["y"]) / 1000.0 for row in rows if row.get("y") is not None]
         if not values_ph:
-            return None, None, None
+            return None, None, None, None, None
 
         current_ph = values_ph[-1]
         avg_ph = sum(values_ph) / len(values_ph)
-        return current_ph, avg_ph, "Blockchain.com 2-day chart average"
+        return current_ph, avg_ph, None, None, "Blockchain.com 2-day chart average"
     except Exception:
-        return None, None, None
+        return None, None, None, None, None
 
 
-def fetch_live_fee_btc_day():
+def fetch_fee_144_block_average():
     """
-    Estimate daily BTC fees from mempool projected blocks.
-    This is intentionally approximate, so it is displayed as an estimate only.
+    Estimate fee revenue with a trailing 144-block average, matching the
+    standard hashprice-index treatment more closely than mempool projections.
     """
     try:
-        blocks = _safe_get_json("https://mempool.space/api/v1/fees/mempool-blocks")
+        blocks = _safe_get_json("https://mempool.space/api/v1/mining/blocks/fees/24h")
         if not isinstance(blocks, list) or not blocks:
             return None, None
 
-        sample = blocks[:3]
-        fee_btc_per_block = []
-        for block in sample:
-            median_fee = float(block.get("medianFee", 0))
-            vsize = float(block.get("blockVSize", 0))
-            sats = median_fee * vsize
-            fee_btc_per_block.append(sats / 100_000_000.0)
+        fee_btc_per_block = [
+            float(block["avgFees"]) / 100_000_000.0
+            for block in blocks[-144:]
+            if block.get("avgFees") is not None
+        ]
+        if not fee_btc_per_block:
+            return None, None
 
         avg_fee_btc_per_block = sum(fee_btc_per_block) / len(fee_btc_per_block)
-        return avg_fee_btc_per_block * 144.0, "mempool.space"
+        return avg_fee_btc_per_block * EXPECTED_BLOCKS_PER_DAY, "mempool.space 144-block fee average"
     except Exception:
         return None, None
 
@@ -184,28 +166,36 @@ def calculate():
 
     live_price, price_source = fetch_live_price()
     spot_avg_24h, spot_avg_24h_source = fetch_spot_24h_average()
-    current_hashrate_24h_ph, avg_hashrate_24h_ph, hashrate_24h_source = fetch_hashrate_24h_stats()
-    live_hashrate_ph, hashrate_source = fetch_live_hashrate_ph()
-    fee_btc_day_live, fee_source = fetch_live_fee_btc_day()
+    (
+        observed_hashrate_ph,
+        avg_hashrate_24h_ph,
+        current_difficulty,
+        difficulty_implied_hashrate_ph,
+        hashrate_24h_source,
+    ) = fetch_hashrate_24h_stats()
+    fee_btc_day_live, fee_source = fetch_fee_144_block_average()
 
     live_price = float(live_price) if live_price is not None else float(last["PriceUSD"])
     price_source = price_source or "Coin Metrics daily"
 
-    # Keep the displayed dashboard hashrate stable on the latest daily Coin Metrics row.
-    # Use 24h/current hashrate inputs only for comparison baselines.
-    network_hashrate_ph = float(last["HashRate_PH"])
-    hashrate_source = "Coin Metrics daily"
+    historical_data_date = last["time"].date()
+    data_age_days = (datetime.now(PACIFIC).date() - historical_data_date).days
 
-    comparison_current_hashrate_ph = None
-    if current_hashrate_24h_ph is not None:
-        comparison_current_hashrate_ph = float(current_hashrate_24h_ph)
-    elif live_hashrate_ph:
-        comparison_current_hashrate_ph = float(live_hashrate_ph)
+    network_hashrate_ph = (
+        float(difficulty_implied_hashrate_ph)
+        if difficulty_implied_hashrate_ph is not None
+        else float(last["HashRate_PH"])
+    )
+    hashrate_source = (
+        "mempool.space current difficulty implied at 10m target"
+        if difficulty_implied_hashrate_ph is not None
+        else "Coin Metrics daily"
+    )
 
     fee_btc_day = float(fee_btc_day_live) if fee_btc_day_live is not None else float(last["fees_btc_day"])
     fee_source = fee_source or "Coin Metrics daily"
 
-    issuance_btc_day = float(last["issuance_btc_day"])
+    issuance_btc_day = BLOCK_SUBSIDY_BTC * EXPECTED_BLOCKS_PER_DAY
     btc_revenue_day = issuance_btc_day + fee_btc_day
     realtime = (btc_revenue_day * live_price) / network_hashrate_ph
     pct_vs_7d = ((realtime / float(last["hashprice_7d"])) - 1.0) * 100.0
@@ -219,15 +209,13 @@ def calculate():
 
     hashrate_avg_24h_ph = float(avg_hashrate_24h_ph) if avg_hashrate_24h_ph is not None else None
     hashrate_vs_24h_pct = (
-        ((comparison_current_hashrate_ph / hashrate_avg_24h_ph) - 1.0) * 100.0
-        if comparison_current_hashrate_ph and hashrate_avg_24h_ph else None
+        ((network_hashrate_ph / hashrate_avg_24h_ph) - 1.0) * 100.0
+        if network_hashrate_ph and hashrate_avg_24h_ph else None
     )
 
     hashprice_rt_avg_24h = None
     hashprice_rt_vs_24h_pct = None
     if spot_avg_24h and network_hashrate_ph:
-        # Keep the realtime comparison on the same stable hashrate basis as
-        # the displayed realtime hashprice so the percentage is apples-to-apples.
         hashprice_rt_avg_24h = (btc_revenue_day * spot_avg_24h) / network_hashrate_ph
         if hashprice_rt_avg_24h:
             hashprice_rt_vs_24h_pct = ((realtime / hashprice_rt_avg_24h) - 1.0) * 100.0
@@ -252,10 +240,12 @@ def calculate():
         "trend": trend[["time", "hashprice_1d"]],
         "network_hashrate_ph": float(network_hashrate_ph),
         "network_hashrate_source": hashrate_source,
-        "network_hashrate_current_ph": float(comparison_current_hashrate_ph) if comparison_current_hashrate_ph is not None else None,
-        "network_hashrate_current_source": hashrate_24h_source or hashrate_source,
+        "network_hashrate_current_ph": float(observed_hashrate_ph) if observed_hashrate_ph is not None else None,
+        "network_hashrate_current_source": hashrate_24h_source,
         "network_hashrate_24h_avg_ph": float(hashrate_avg_24h_ph) if hashrate_avg_24h_ph is not None else None,
         "network_hashrate_vs_24h_pct": float(hashrate_vs_24h_pct) if hashrate_vs_24h_pct is not None else None,
+        "current_difficulty": float(current_difficulty) if current_difficulty is not None else None,
+        "difficulty_implied_hashrate_ph": float(difficulty_implied_hashrate_ph) if difficulty_implied_hashrate_ph is not None else None,
         "bitcoin_per_block": float(BLOCK_SUBSIDY_BTC),
         "issuance_btc_day": float(issuance_btc_day),
         "fee_btc_day": float(fee_btc_day),
@@ -268,11 +258,18 @@ def calculate():
         "spot_avg_24h_source": spot_avg_24h_source,
         "spot_vs_24h_pct": float(spot_vs_24h_pct) if spot_vs_24h_pct is not None else None,
         "source_coinmetrics": COINMETRICS_CSV,
+        "historical_data_date": historical_data_date.strftime("%Y-%m-%d"),
+        "historical_data_age_days": int(data_age_days),
+        "hashprice_methodology": (
+            "Realtime hashprice uses current network difficulty converted to expected PH/s at "
+            "the 10-minute target, fixed current block subsidy, a 144-block trailing fee "
+            "average, and live BTC spot."
+        ),
         "comparison_logic": {
-            "hashprice_rt": "current realtime vs last 24h average spot using the same stable daily hashrate basis",
+            "hashprice_rt": "current difficulty-based realtime vs 24h average spot using the same difficulty and fee basis",
             "spot": "current spot vs last 24h average spot",
-            "network_hashrate_ph": "current hashrate vs last 24h average hashrate",
+            "network_hashrate_ph": "difficulty-implied current hashrate vs observed 24h average hashrate",
             "hashprice_7d": "current 7d window vs previous 7d window",
-            "fee_pct": "current fee share vs latest daily Coin Metrics row",
+            "fee_pct": "144-block fee share vs latest daily Coin Metrics row",
         },
     }

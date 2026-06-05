@@ -62,8 +62,12 @@ def build_api_payload(data):
         "pct_vs_7d": float(data["pct_vs_7d"]),
         "network_hashrate_ph": float(data["network_hashrate_ph"]),
         "network_hashrate_source": data["network_hashrate_source"],
+        "network_hashrate_current_ph": float(data["network_hashrate_current_ph"]) if data["network_hashrate_current_ph"] is not None else None,
+        "network_hashrate_current_source": data["network_hashrate_current_source"],
         "network_hashrate_24h_avg_ph": float(data["network_hashrate_24h_avg_ph"]) if data["network_hashrate_24h_avg_ph"] is not None else None,
         "network_hashrate_vs_24h_pct": float(data["network_hashrate_vs_24h_pct"]) if data["network_hashrate_vs_24h_pct"] is not None else None,
+        "current_difficulty": float(data["current_difficulty"]) if data["current_difficulty"] is not None else None,
+        "difficulty_implied_hashrate_ph": float(data["difficulty_implied_hashrate_ph"]) if data["difficulty_implied_hashrate_ph"] is not None else None,
         "bitcoin_per_block": float(data["bitcoin_per_block"]),
         "issuance_btc_day": float(data["issuance_btc_day"]),
         "fee_btc_day": float(data["fee_btc_day"]),
@@ -73,6 +77,9 @@ def build_api_payload(data):
         "fee_pct_daily": float(data["fee_pct_daily"]) if data["fee_pct_daily"] is not None else None,
         "fee_pct_vs_daily_pct": float(data["fee_pct_vs_daily_pct"]) if data["fee_pct_vs_daily_pct"] is not None else None,
         "source_coinmetrics": data["source_coinmetrics"],
+        "historical_data_date": data["historical_data_date"],
+        "historical_data_age_days": int(data["historical_data_age_days"]),
+        "hashprice_methodology": data["hashprice_methodology"],
         "comparison_logic": data["comparison_logic"],
         "trend": [
             {
@@ -93,6 +100,9 @@ def dashboard(request: Request):
     marker = "▲" if data["pct_vs_7d"] >= 0 else "▼"
 
     calculator_hashprice = data["hashprice_rt"]
+    observed_hashrate_html = ""
+    if data["network_hashrate_current_ph"] is not None:
+        observed_hashrate_html = f"<div>Observed hashrate: {data['network_hashrate_current_ph']:,.0f} PH/s ({data['network_hashrate_current_source']})</div>"
 
     trend_html = ""
     for row in trend_rows:
@@ -108,18 +118,19 @@ def dashboard(request: Request):
 
     explanation_html = f"""
     <div class=\"formula\">
-        <div><strong>Realtime hashprice</strong> = ((daily BTC issuance + daily BTC fees) × live BTC spot) ÷ network hashrate (PH/s)</div>
+        <div><strong>Realtime hashprice</strong> = ((expected subsidy issuance + trailing fee average) × live BTC spot) ÷ difficulty-implied network hashrate (PH/s)</div>
         <br>
         <div>For this dashboard right now, that means:</div>
         <br>
-        <div>({data['issuance_btc_day']:.3f} BTC/day + {data['fee_btc_day']:.3f} BTC/day) × ${data['spot']:,.2f} ÷ {data['network_hashrate_ph']:,.0f} PH/s = <strong>${data['hashprice_rt']:,.2f} / PH / day</strong></div>
+        <div>({data['issuance_btc_day']:.3f} BTC/day expected subsidy + {data['fee_btc_day']:.3f} BTC/day fees) × ${data['spot']:,.2f} ÷ {data['network_hashrate_ph']:,.0f} PH/s = <strong>${data['hashprice_rt']:,.2f} / PH / day</strong></div>
         <br>
-        <div><strong>1-Day Raw</strong> uses the latest daily Coin Metrics network row.</div>
-        <div><strong>7-Day Smoothed</strong> uses a 7-day rolling average of revenue and hashrate to reduce one-day noise.</div>
+        <div><strong>Network</strong> uses current difficulty converted to expected PH/s at the 10-minute target.</div>
+        <div><strong>1-Day Raw</strong> and <strong>7-Day Smoothed</strong> use Coin Metrics daily history. Latest historical row: {data['historical_data_date']} ({data['historical_data_age_days']} days old).</div>
         <br>
         <div>Sources used by the app:</div>
         <div>Spot price: {data['spot_source']}</div>
-        <div>Network hashrate: {data['network_hashrate_source']}</div>
+        <div>Difficulty-implied network hashrate: {data['network_hashrate_source']}</div>
+        {observed_hashrate_html}
         <div>Fees/day: {data['fee_source']}</div>
         <div>Historical daily economics: Coin Metrics public BTC CSV</div>
     </div>
@@ -264,7 +275,7 @@ Last Updated: {data['timestamp']}
 <div class=\"box\">
 <strong>Network State</strong><br><br>
 <div class=\"network-grid\">
-  <div>Network Hashrate: {data['network_hashrate_ph']:,.0f} PH/s</div>
+  <div>Difficulty-Implied Network: {data['network_hashrate_ph']:,.0f} PH/s</div>
   <div>Bitcoin per Block: {data['bitcoin_per_block']:.3f} BTC</div>
   <div>Issuance (BTC/day): {data['issuance_btc_day']:.3f}</div>
   <div>Fees (BTC/day): {data['fee_btc_day']:.3f}</div>
