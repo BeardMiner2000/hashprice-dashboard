@@ -87,6 +87,28 @@ def fetch_spot_24h_average():
 
         return sum(values) / len(values), "CoinGecko 24h hourly average"
     except Exception:
+        pass
+
+    try:
+        data = _safe_get_json("https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=3600")
+        if not isinstance(data, list) or not data:
+            return None, None
+
+        # Coinbase returns candles newest-first: [time, low, high, open, close, volume].
+        closes = [float(candle[4]) for candle in data[:24] if len(candle) >= 5]
+        if closes:
+            return sum(closes) / len(closes), "Coinbase 24h hourly close average"
+    except Exception:
+        pass
+
+    try:
+        data = _safe_get_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
+        bitcoin = data.get("bitcoin", {})
+        current = float(bitcoin["usd"])
+        change_pct = float(bitcoin["usd_24h_change"])
+        prior = current / (1.0 + (change_pct / 100.0))
+        return (current + prior) / 2.0, "CoinGecko 24h change midpoint estimate"
+    except Exception:
         return None, None
 
 
@@ -203,8 +225,8 @@ def calculate():
     prev_hashprice_7d = float(prev["hashprice_7d"])
     hashprice_7d_change_pct = ((float(last["hashprice_7d"]) / prev_hashprice_7d) - 1.0) * 100.0 if prev_hashprice_7d else None
 
-    spot_avg_24h = float(spot_avg_24h) if spot_avg_24h is not None else float(last["PriceUSD"])
-    spot_avg_24h_source = spot_avg_24h_source or "Coin Metrics daily"
+    spot_avg_24h = float(spot_avg_24h) if spot_avg_24h is not None else None
+    spot_avg_24h_source = spot_avg_24h_source or None
     spot_vs_24h_pct = ((live_price / spot_avg_24h) - 1.0) * 100.0 if spot_avg_24h else None
 
     hashrate_avg_24h_ph = float(avg_hashrate_24h_ph) if avg_hashrate_24h_ph is not None else None
