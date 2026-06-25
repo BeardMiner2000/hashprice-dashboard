@@ -1,33 +1,27 @@
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 PACIFIC = pytz.timezone("US/Pacific")
+COINMETRICS_API = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 COINMETRICS_CSV = "https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv"
 BLOCK_SUBSIDY_BTC = 3.125  # current subsidy after 2024 halving
 EXPECTED_BLOCKS_PER_DAY = 144.0
 HASHES_PER_DIFFICULTY = 2 ** 32
 
 
-def _safe_get_json(url: str, timeout: int = 8):
-    r = requests.get(url, timeout=timeout)
+def _safe_get_json(url: str, timeout: int = 8, params=None):
+    r = requests.get(url, timeout=timeout, params=params)
     r.raise_for_status()
     return r.json()
 
 
-def fetch_data():
-    """
-    Historical daily network + economics from Coin Metrics public CSV.
+def _prepare_coinmetrics_frame(df, source):
+    df["time"] = pd.to_datetime(df["time"], errors="coerce", utc=True).dt.tz_localize(None)
+    for col in ["PriceUSD", "HashRate", "IssTotNtv", "FeeTotNtv"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    Metrics used:
-      - PriceUSD   : daily BTC USD price
-      - HashRate   : network hashrate estimate (TH/s in Coin Metrics docs)
-      - IssTotNtv  : BTC issuance per day (subsidy only)
-      - FeeTotNtv  : BTC fees per day
-    """
-    df = pd.read_csv(COINMETRICS_CSV)
-    df["time"] = pd.to_datetime(df["time"], errors="coerce")
     df = df[["time", "PriceUSD", "HashRate", "IssTotNtv", "FeeTotNtv"]].dropna()
     df = df.sort_values("time")
 
@@ -47,7 +41,50 @@ def fetch_data():
         df["usd_revenue"].rolling(7).mean() /
         df["HashRate_PH"].rolling(7).mean()
     )
-    return df.dropna()
+    df = df.dropna()
+    df.attrs["source"] = source
+    return df
+
+
+def fetch_coinmetrics_api_data():
+    start_time = (datetime.utcnow() - timedelta(days=500)).strftime("%Y-%m-%d")
+    data = _safe_get_json(
+        COINMETRICS_API,
+        timeout=20,
+        params={
+            "assets": "btc",
+            "metrics": "PriceUSD,HashRate,IssTotNtv,FeeTotNtv",
+            "frequency": "1d",
+            "start_time": start_time,
+            "page_size": 10000,
+        },
+    )
+    rows = data.get("data", [])
+    if not rows:
+        raise RuntimeError("Coin Metrics API returned no rows")
+
+    return _prepare_coinmetrics_frame(pd.DataFrame(rows), COINMETRICS_API)
+
+
+def fetch_coinmetrics_csv_data():
+    df = pd.read_csv(COINMETRICS_CSV)
+    return _prepare_coinmetrics_frame(df, COINMETRICS_CSV)
+
+
+def fetch_data():
+    """
+    Historical daily network + economics from Coin Metrics.
+
+    Metrics used:
+      - PriceUSD   : daily BTC USD price
+      - HashRate   : network hashrate estimate (TH/s in Coin Metrics docs)
+      - IssTotNtv  : BTC issuance per day (subsidy only)
+      - FeeTotNtv  : BTC fees per day
+    """
+    try:
+        return fetch_coinmetrics_api_data()
+    except Exception:
+        return fetch_coinmetrics_csv_data()
 
 
 def fetch_live_price():
@@ -279,7 +316,7 @@ def calculate():
         "spot_avg_24h": float(spot_avg_24h) if spot_avg_24h is not None else None,
         "spot_avg_24h_source": spot_avg_24h_source,
         "spot_vs_24h_pct": float(spot_vs_24h_pct) if spot_vs_24h_pct is not None else None,
-        "source_coinmetrics": COINMETRICS_CSV,
+        "source_coinmetrics": df.attrs.get("source", COINMETRICS_API),
         "historical_data_date": historical_data_date.strftime("%Y-%m-%d"),
         "historical_data_age_days": int(data_age_days),
         "hashprice_methodology": (
