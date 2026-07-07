@@ -1,5 +1,7 @@
 # Deploy To AI Home Pi
 
+Agents: read [`AGENTS.md`](/Users/jl/hashprice_project/AGENTS.md) before changing deployment logic. This app is not deployed on Render.
+
 The public Hashprice API is hosted on the AI Home Pi, not on the MacBook.
 
 Public API:
