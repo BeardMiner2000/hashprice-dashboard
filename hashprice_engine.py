@@ -1,6 +1,8 @@
+import os
+from datetime import datetime, timedelta
+
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
 import pytz
 
 PACIFIC = pytz.timezone("US/Pacific")
@@ -9,6 +11,10 @@ COINMETRICS_CSV = "https://raw.githubusercontent.com/coinmetrics/data/master/csv
 BLOCK_SUBSIDY_BTC = 3.125  # current subsidy after 2024 halving
 EXPECTED_BLOCKS_PER_DAY = 144.0
 HASHES_PER_DIFFICULTY = 2 ** 32
+HISTORICAL_LOOKBACK_DAYS = int(os.getenv("HASHPRICE_HISTORICAL_LOOKBACK_DAYS", "500"))
+MAX_HISTORICAL_AGE_DAYS = int(os.getenv("HASHPRICE_MAX_HISTORICAL_AGE_DAYS", "3"))
+HISTORICAL_CACHE_SECONDS = int(os.getenv("HASHPRICE_HISTORICAL_CACHE_SECONDS", "900"))
+_historical_cache = {"df": None, "expires_at": None}
 
 
 def _safe_get_json(url: str, timeout: int = 8, params=None):
@@ -46,8 +52,50 @@ def _prepare_coinmetrics_frame(df, source):
     return df
 
 
+def _historical_age_days(df):
+    historical_data_date = df.iloc[-1]["time"].date()
+    data_age_days = (datetime.now(PACIFIC).date() - historical_data_date).days
+    return historical_data_date, data_age_days
+
+
+def _validate_historical_freshness(df):
+    if df.empty:
+        raise RuntimeError("Coin Metrics historical data returned no usable rows")
+
+    historical_data_date, data_age_days = _historical_age_days(df)
+    df.attrs["historical_data_date"] = historical_data_date.strftime("%Y-%m-%d")
+    df.attrs["historical_data_age_days"] = int(data_age_days)
+    df.attrs["historical_data_fresh"] = data_age_days <= MAX_HISTORICAL_AGE_DAYS
+
+    if data_age_days > MAX_HISTORICAL_AGE_DAYS:
+        source = df.attrs.get("source", "unknown source")
+        raise RuntimeError(
+            f"Historical Coin Metrics data from {source} is stale: "
+            f"latest row {historical_data_date} is {data_age_days} days old "
+            f"(max {MAX_HISTORICAL_AGE_DAYS})"
+        )
+
+    return df
+
+
+def _cache_historical_data(df):
+    _historical_cache["df"] = df.copy()
+    _historical_cache["expires_at"] = datetime.now(PACIFIC) + timedelta(seconds=HISTORICAL_CACHE_SECONDS)
+    return df
+
+
+def _cached_historical_data():
+    cached = _historical_cache.get("df")
+    expires_at = _historical_cache.get("expires_at")
+    if cached is None or expires_at is None:
+        return None
+    if datetime.now(PACIFIC) >= expires_at:
+        return None
+    return _validate_historical_freshness(cached.copy())
+
+
 def fetch_coinmetrics_api_data():
-    start_time = (datetime.utcnow() - timedelta(days=500)).strftime("%Y-%m-%d")
+    start_time = (datetime.now(PACIFIC) - timedelta(days=HISTORICAL_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
     data = _safe_get_json(
         COINMETRICS_API,
         timeout=20,
@@ -63,15 +111,15 @@ def fetch_coinmetrics_api_data():
     if not rows:
         raise RuntimeError("Coin Metrics API returned no rows")
 
-    return _prepare_coinmetrics_frame(pd.DataFrame(rows), COINMETRICS_API)
+    return _validate_historical_freshness(_prepare_coinmetrics_frame(pd.DataFrame(rows), COINMETRICS_API))
 
 
 def fetch_coinmetrics_csv_data():
     df = pd.read_csv(COINMETRICS_CSV)
-    return _prepare_coinmetrics_frame(df, COINMETRICS_CSV)
+    return _validate_historical_freshness(_prepare_coinmetrics_frame(df, COINMETRICS_CSV))
 
 
-def fetch_data():
+def fetch_data(force_refresh=False):
     """
     Historical daily network + economics from Coin Metrics.
 
@@ -81,10 +129,38 @@ def fetch_data():
       - IssTotNtv  : BTC issuance per day (subsidy only)
       - FeeTotNtv  : BTC fees per day
     """
-    try:
-        return fetch_coinmetrics_api_data()
-    except Exception:
-        return fetch_coinmetrics_csv_data()
+    if not force_refresh:
+        cached = _cached_historical_data()
+        if cached is not None:
+            return cached
+
+    stale_cache = _historical_cache.get("df")
+    errors = []
+    for fetcher in (fetch_coinmetrics_api_data, fetch_coinmetrics_csv_data):
+        try:
+            return _cache_historical_data(fetcher())
+        except Exception as exc:
+            errors.append(str(exc))
+
+    if stale_cache is not None:
+        try:
+            return _validate_historical_freshness(stale_cache.copy())
+        except Exception as exc:
+            errors.append(f"cached data unusable: {exc}")
+
+    raise RuntimeError("No fresh historical hashprice data available. " + " | ".join(errors))
+
+
+def historical_status():
+    df = fetch_data()
+    return {
+        "source_coinmetrics": df.attrs.get("source", COINMETRICS_API),
+        "historical_data_date": df.attrs["historical_data_date"],
+        "historical_data_age_days": int(df.attrs["historical_data_age_days"]),
+        "historical_data_fresh": bool(df.attrs["historical_data_fresh"]),
+        "historical_data_max_age_days": int(MAX_HISTORICAL_AGE_DAYS),
+        "historical_cache_seconds": int(HISTORICAL_CACHE_SECONDS),
+    }
 
 
 def fetch_live_price():
@@ -238,7 +314,7 @@ def calculate():
     price_source = price_source or "Coin Metrics daily"
 
     historical_data_date = last["time"].date()
-    data_age_days = (datetime.now(PACIFIC).date() - historical_data_date).days
+    data_age_days = int(df.attrs.get("historical_data_age_days", _historical_age_days(df)[1]))
 
     network_hashrate_ph = (
         float(difficulty_implied_hashrate_ph)
@@ -319,6 +395,8 @@ def calculate():
         "source_coinmetrics": df.attrs.get("source", COINMETRICS_API),
         "historical_data_date": historical_data_date.strftime("%Y-%m-%d"),
         "historical_data_age_days": int(data_age_days),
+        "historical_data_fresh": data_age_days <= MAX_HISTORICAL_AGE_DAYS,
+        "historical_data_max_age_days": int(MAX_HISTORICAL_AGE_DAYS),
         "hashprice_methodology": (
             "Realtime hashprice uses current network difficulty converted to expected PH/s at "
             "the 10-minute target, fixed current block subsidy, a 144-block trailing fee "

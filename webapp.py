@@ -2,7 +2,7 @@ import os
 import json
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from hashprice_engine import calculate
+from hashprice_engine import calculate, historical_status
 
 BRAND = os.getenv("BRAND", "beardminer")
 
@@ -79,6 +79,8 @@ def build_api_payload(data):
         "source_coinmetrics": data["source_coinmetrics"],
         "historical_data_date": data["historical_data_date"],
         "historical_data_age_days": int(data["historical_data_age_days"]),
+        "historical_data_fresh": bool(data["historical_data_fresh"]),
+        "historical_data_max_age_days": int(data["historical_data_max_age_days"]),
         "hashprice_methodology": data["hashprice_methodology"],
         "comparison_logic": data["comparison_logic"],
         "trend": [
@@ -132,7 +134,7 @@ def dashboard(request: Request):
         <div>Difficulty-implied network hashrate: {data['network_hashrate_source']}</div>
         {observed_hashrate_html}
         <div>Fees/day: {data['fee_source']}</div>
-        <div>Historical daily economics: Coin Metrics public BTC CSV</div>
+        <div>Historical daily economics: {data['source_coinmetrics']}</div>
     </div>
     """
 
@@ -340,4 +342,8 @@ def hashprice_api():
 
 @app.get("/healthz", response_class=JSONResponse)
 def healthcheck():
-    return JSONResponse(content={"status": "ok"})
+    try:
+        status = historical_status()
+        return JSONResponse(content={"status": "ok", **status})
+    except Exception as exc:
+        return JSONResponse(content={"status": "error", "error": str(exc)}, status_code=503)
