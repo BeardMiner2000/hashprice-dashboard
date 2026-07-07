@@ -8,19 +8,28 @@
 
 ## Recommended architecture
 
-- Host the FastAPI app on a cloud service
-- Point SwiftBar on your Mac at the hosted API URL
+- Host the FastAPI app on the AI Home Raspberry Pi
+- Route the public hostname through Cloudflare and Pi Caddy
+- Point SwiftBar on your Mac at the public Pi-backed API URL
 - Let SwiftBar refresh the menu bar item every minute
 
-This removes the dependency on your laptop running the API locally.
+This removes the dependency on your laptop running the API locally while keeping the runtime on the Pi.
 
-## Deploy the API
+## API runtime
 
-The current hosted API is:
+The current API is served by the AI Home Pi:
 
 - Dashboard: `https://hashprice.coffeecoffeecoffeecoffee.com/`
 - JSON API: `https://hashprice.coffeecoffeecoffeecoffee.com/api/hashprice`
 - Health check: `https://hashprice.coffeecoffeecoffeecoffee.com/healthz`
+
+Runtime path:
+
+```text
+Cloudflare -> Pi Caddy -> app-hashprice-beardminer:10000
+```
+
+Deploy and verification commands are in [`DEPLOY_PI.md`](/Users/jl/hashprice_project/DEPLOY_PI.md).
 
 If you move the API again, update the app defaults or set `HASHPRICE_API_URL` and `HASHPRICE_DASHBOARD_URL`.
 
@@ -56,5 +65,5 @@ The menu bar title format is now `₿ $/PH 33.93`.
 
 ## Important constraint
 
-The hosted API works even when your laptop is off.
+The Pi-backed API works even when your laptop is off, as long as the Pi and Cloudflare/Caddy route are up.
 The menu bar item itself only appears when your Mac is on and SwiftBar is running.
